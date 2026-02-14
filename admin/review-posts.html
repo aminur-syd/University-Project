@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Logs - Admin</title>
+    <title>Review Posts - Staff</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -49,20 +49,9 @@
             border-right: 3px solid var(--primary-color);
         }
 
-        .logs-container {
-            background: #1f2937;
-            color: #10b981;
-            padding: 20px;
-            border-radius: var(--border-radius);
-            font-family: monospace;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .log-entry {
-            margin-bottom: 5px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 5px;
+        .review-list {
+            display: grid;
+            gap: 20px;
         }
     </style>
 </head>
@@ -76,9 +65,11 @@
                     style="font-size: 0.8rem; background: var(--danger); color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle;">ADMIN</span>
             </a>
             <div class="nav-links">
-                <span style="font-weight: 600;">Welcome, <span id="user-name">Admin</span></span>
-                <button id="logout-btn" class="btn btn-outline"
-                    style="color: var(--text-color); border-color: var(--text-color);">Logout</button>
+                <div id="user-links" style="display: none;">
+                    <a href="dashboard.html" id="dashboard-link">Dashboard</a>
+                    <span id="welcome-msg" style="font-weight: 600; color: var(--text-color);"></span>
+                    <button id="logout-btn" class="btn btn-outline">Logout</button>
+                </div>
             </div>
         </div>
     </nav>
@@ -88,17 +79,17 @@
             <ul class="sidebar-menu">
                 <li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
                 <li><a href="manage-users.html"><i class="fas fa-users-cog"></i> Manage Users</a></li>
-                <li><a href="logs.html" class="active"><i class="fas fa-history"></i> System Logs</a></li>
-                <li><a href="../staff/review-posts.html"><i class="fas fa-check-square"></i> Review Posts</a></li>
-                <li><a href="../staff/review-claims.html"><i class="fas fa-gavel"></i> Review Claims</a></li>
+                <li><a href="logs.html"><i class="fas fa-history"></i> System Logs</a></li>
+                <li><a href="review-posts.html" class="active"><i class="fas fa-check-square"></i> Review Posts</a></li>
+                <li><a href="review-claims.html"><i class="fas fa-gavel"></i> Review Claims</a></li>
                 <li><a href="../index.html"><i class="fas fa-arrow-left"></i> Back to Home</a></li>
             </ul>
         </aside>
 
         <main class="main-content">
-            <h2>System Logs</h2>
-            <div class="logs-container" id="logs-container">
-                <div class="log-entry">Loading system logs...</div>
+            <h2>Review Pending Posts</h2>
+            <div class="review-list" id="review-posts-list">
+                <div class="loading-spinner">Loading pending posts...</div>
             </div>
         </main>
     </div>
@@ -144,7 +135,7 @@
 
     <script type="module" src="../assets/js/firebase-config.js"></script>
     <script type="module" src="../assets/js/auth.js"></script>
-    <script type="module" src="../assets/js/admin.js"></script>
+    <script type="module" src="../assets/js/staff.js"></script>
 </body>
 
 </html>

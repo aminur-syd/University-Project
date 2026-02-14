@@ -710,3 +710,133 @@ footer {
 .password-requirements li.invalid {
     color: var(--danger);
 }
+
+/* Team Section */
+.team-section {
+    padding: 80px 0;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 10px;
+    margin-top: 50px;
+}
+
+/* Professional Team Styles (No Box) */
+.team-card {
+    text-align: center;
+    padding: 20px;
+    transition: var(--transition);
+}
+
+.member-img-container {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 25px;
+    border-radius: 50%;
+    overflow: hidden;
+    /* Soft shadow instead of border for a premium look */
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    border: 4px solid white;
+    /* Crisp inner border */
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.team-card:hover .member-img-container {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-color);
+}
+
+.member-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.team-card h3 {
+    margin-bottom: 8px;
+    color: var(--text-color);
+    font-weight: 700;
+    font-size: 1.25rem;
+    transition: color 0.3s ease;
+}
+
+.team-card:hover h3 {
+    color: var(--primary-color);
+}
+
+.member-role {
+    color: #6b7280;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+}
+
+/* Team Social Icons */
+.team-social {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 5px;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.team-card:hover .team-social {
+    opacity: 1;
+}
+
+.social-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: transparent;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    transition: all 0.3s ease;
+}
+
+.social-icon:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(37, 99, 235, 0.2);
+}
+
+/* Team Section Divider */
+.team-section {
+    position: relative;
+    padding-bottom: 120px;
+    /* Adjusted padding */
+}
+
+.team-divider-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+    transform: rotate(180deg);
+}
+
+.team-divider-bottom svg {
+    position: relative;
+    display: block;
+    width: calc(150% + 1.3px);
+    height: 60px;
+    /* Reduced height for subtler curve */
+}
+
+.team-shape-fill {
+    fill: #111827;
+    /* Matches Footer Background */
+}
