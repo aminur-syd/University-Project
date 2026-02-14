@@ -15,6 +15,28 @@ const totalUsers = document.getElementById('total-users');
 const totalItems = document.getElementById('total-items');
 const totalClaims = document.getElementById('total-claims');
 
+window.editUserRole = async (userId, userName, currentRole) => {
+    const newRole = prompt(`Change role for ${userName}.\nCurrent Role: ${currentRole}\nEnter new role (user / staff / admin):`, currentRole);
+
+    if (newRole && newRole !== currentRole) {
+        if (!['user', 'staff', 'admin'].includes(newRole.toLowerCase())) {
+            alert("Invalid role. Please enter 'user', 'staff', or 'admin'.");
+            return;
+        }
+
+        try {
+            await updateDoc(doc(db, "users", userId), {
+                role: newRole.toLowerCase()
+            });
+            alert(`User ${userName} is now a ${newRole}.`);
+            window.location.reload();
+        } catch (error) {
+            console.error("Error updating role:", error);
+            alert("Error: " + error.message);
+        }
+    }
+};
+
 // Fetch Users
 if (usersList) {
     const fetchUsers = async () => {
@@ -37,7 +59,7 @@ if (usersList) {
                     <td>${user.role}</td>
                     <td>${user.createdAt ? user.createdAt.toDate().toLocaleDateString() : 'N/A'}</td>
                     <td>
-                        <button onclick="alert('Feature to promote/demote user not fully implemented in UI')" class="btn btn-outline" style="color: blue; border: 1px solid blue; padding: 5px 10px; font-size: 0.8rem;">Edit Role</button>
+                        <button onclick="editUserRole('${docSnap.id}', '${user.name}', '${user.role}')" class="btn btn-outline" style="color: blue; border: 1px solid blue; padding: 5px 10px; font-size: 0.8rem;">Edit Role</button>
                     </td>
                 `;
                 usersList.appendChild(tr);

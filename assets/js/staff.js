@@ -32,12 +32,16 @@ if (pendingPostsList) {
             const div = document.createElement('div');
             div.className = 'post-item';
             div.innerHTML = `
-                <div>
-                    <h3>${item.title} (${item.type})</h3>
-                    <p>Posted by: ${item.creatorName}</p>
-                    <p>${item.description}</p>
+                <div style="display: flex; gap: 15px; align-items: start;">
+                    <img src="${item.imageUrl || 'https://via.placeholder.com/150'}" alt="Item Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
+                    <div>
+                        <h3>${item.title} (${item.type})</h3>
+                        <p><strong>Posted by:</strong> ${item.creatorName}</p>
+                        <p>${item.description}</p>
+                        <p><small>${item.date} | ${item.location}</small></p>
+                    </div>
                 </div>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button class="btn btn-primary approve-post-btn" data-id="${docSnap.id}">Approve</button>
                     <button class="btn btn-danger reject-post-btn" style="background: var(--danger); color: white;" data-id="${docSnap.id}">Reject</button>
                 </div>

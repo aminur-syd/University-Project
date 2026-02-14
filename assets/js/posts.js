@@ -50,13 +50,34 @@ if (createPostForm) {
         submitBtn.textContent = "Posting...";
 
         try {
+            const IMGBB_API_KEY = 'b7d7a635920b14b3b0a9868f055eb0b9'; // Provided by user
+
             let imageUrl = null;
             if (imageFile) {
-                const storageRef = ref(storage, `items/${user.uid}/${Date.now()}_${imageFile.name}`);
-                await uploadBytes(storageRef, imageFile);
-                imageUrl = await getDownloadURL(storageRef);
+                submitBtn.textContent = "Uploading Image...";
+
+                const formData = new FormData();
+                formData.append('image', imageFile);
+
+                try {
+                    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        imageUrl = result.data.url;
+                    } else {
+                        throw new Error('ImgBB Upload Failed: ' + (result.error?.message || 'Unknown error'));
+                    }
+                } catch (apiError) {
+                    throw new Error('Image Upload Error: ' + apiError.message);
+                }
             }
 
+            submitBtn.textContent = "Saving Details...";
             await addDoc(collection(db, "items"), {
                 type,
                 category,
@@ -76,11 +97,36 @@ if (createPostForm) {
             messageP.style.color = 'green';
             messageP.textContent = "Post submitted! It will be visible after staff approval.";
             createPostForm.reset();
+
+            // Show Custom Modal
+            const successModal = document.getElementById('success-modal');
+            if (successModal) {
+                successModal.classList.add('active');
+
+                // Handle Close / Continue
+                const closeBtn = document.getElementById('close-modal-btn');
+                if (closeBtn) {
+                    closeBtn.onclick = () => {
+                        successModal.classList.remove('active');
+                        // Redirect to Home or Dashboard
+                        window.location.href = "../index.html";
+                    };
+                }
+            } else {
+                alert("Success! Your post has been submitted for approval.");
+            }
         } catch (error) {
-            console.error(error);
+            console.error("Error creating post:", error);
             messageP.style.display = 'block';
             messageP.style.color = 'red';
-            messageP.textContent = "Error creating post: " + error.message;
+
+            let errorMsg = "Error: " + error.message;
+            if (error.code === 'storage/unauthorized') {
+                errorMsg = "Error: Permission Denied. Please check your Firebase Storage Rules.";
+            }
+
+            messageP.textContent = errorMsg;
+            alert(errorMsg + "\n\nSee debugging guide for help.");
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = "Submit Post";
@@ -134,6 +180,72 @@ if (latestItemsGrid || itemsGrid) {
     };
 
     fetchItems();
+
+    // Fetch Homepage Stats
+    const fetchHomeStats = async () => {
+        try {
+            // Get Total Items Reported
+            const itemsSnapshot = await getDocs(collection(db, "items"));
+            const totalItems = itemsSnapshot.size;
+
+            // Get Items Returned (Status 'resolved')
+            const qResolved = query(collection(db, "items"), where("status", "==", "resolved"));
+            const resolvedSnapshot = await getDocs(qResolved);
+            const totalResolved = resolvedSnapshot.size;
+
+            // Get Active Students (Users)
+            const usersSnapshot = await getDocs(collection(db, "users"));
+            const totalUsers = usersSnapshot.size;
+
+            // Create a mapping of stat labels to their new values
+            const statMap = {
+                "Items Reported": totalItems,
+                "Items Returned": totalResolved,
+                "Active Students": totalUsers
+            };
+
+            // Update DOM
+            document.querySelectorAll('.stat-item').forEach(item => {
+                const label = item.querySelector('p').textContent.trim();
+                const counterElement = item.querySelector('.counter');
+
+                if (statMap[label] !== undefined) {
+                    const finalValue = statMap[label];
+                    // Animate the counter
+                    let start = 0;
+                    const duration = 2000;
+                    const startTime = performance.now();
+
+                    function update(currentTime) {
+                        const elapsed = currentTime - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+
+                        // Ease out quart
+                        const ease = 1 - Math.pow(1 - progress, 4);
+
+                        const current = Math.floor(ease * finalValue);
+                        counterElement.textContent = current + "+";
+                        counterElement.setAttribute('data-target', finalValue);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(update);
+                        } else {
+                            counterElement.textContent = finalValue + "+";
+                        }
+                    }
+                    requestAnimationFrame(update);
+                }
+            });
+
+        } catch (error) {
+            console.error("Error fetching stats:", error);
+        }
+    };
+
+    // Only run on homepage
+    if (document.querySelector('.stats-section')) {
+        fetchHomeStats();
+    }
 }
 
 // Fetch My Posts (User Dashboard)
