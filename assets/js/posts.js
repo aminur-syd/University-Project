@@ -88,19 +88,23 @@ if (createPostForm) {
                 imageUrl,
                 createdBy: user.uid,
                 creatorName: user.displayName,
-                reviewStatus: "pending", // pending, approved, rejected
-                status: "active", // active, resolved, removed
+                reviewStatus: "approved", // Auto-approved
+                status: "active", // Auto-active
                 createdAt: serverTimestamp()
             });
 
             messageP.style.display = 'block';
             messageP.style.color = 'green';
-            messageP.textContent = "Post submitted! It will be visible after staff approval.";
+            messageP.textContent = "Post submitted successfully!";
             createPostForm.reset();
 
             // Show Custom Modal
             const successModal = document.getElementById('success-modal');
             if (successModal) {
+                // Update modal message if possible (or keep generic 'Success!')
+                const modalMsg = successModal.querySelector('p');
+                if (modalMsg) modalMsg.textContent = "Your post is now live.";
+
                 successModal.classList.add('active');
 
                 // Handle Close / Continue
@@ -113,7 +117,8 @@ if (createPostForm) {
                     };
                 }
             } else {
-                alert("Success! Your post has been submitted for approval.");
+                alert("Success! Your post is now live.");
+                window.location.href = "../index.html";
             }
         } catch (error) {
             console.error("Error creating post:", error);
@@ -164,30 +169,16 @@ if (latestFoundGrid || latestLostGrid || itemsGrid) {
         });
     };
 
+
+    // Fetch Latest Items (Home Page)
     const fetchHomePageItems = async () => {
         try {
-            // Fetch Latest Found Items
-            if (latestFoundGrid) {
-                latestFoundGrid.innerHTML = '<div class="loading-spinner">Loading recently found items...</div>';
-                const qFound = query(
-                    collection(db, "items"),
-                    where("type", "==", "found"),
-                    where("reviewStatus", "==", "approved"),
-                    where("status", "==", "active"),
-                    orderBy("createdAt", "desc"),
-                    limit(4)
-                );
-                const snapFound = await getDocs(qFound);
-                renderItems(snapFound.docs, latestFoundGrid);
-            }
-
-            // Fetch Latest Lost Items
+            // Fetch Latest Lost Items ONLY
             if (latestLostGrid) {
                 latestLostGrid.innerHTML = '<div class="loading-spinner">Loading recently lost items...</div>';
                 const qLost = query(
                     collection(db, "items"),
                     where("type", "==", "lost"),
-                    where("reviewStatus", "==", "approved"),
                     where("status", "==", "active"),
                     orderBy("createdAt", "desc"),
                     limit(4)
@@ -198,7 +189,6 @@ if (latestFoundGrid || latestLostGrid || itemsGrid) {
 
         } catch (error) {
             console.error("Error fetching homepage items:", error);
-            if (latestFoundGrid) latestFoundGrid.innerHTML = '<p>Error loading items.</p>';
             if (latestLostGrid) latestLostGrid.innerHTML = '<p>Error loading items.</p>';
         }
     };
@@ -217,23 +207,22 @@ if (latestFoundGrid || latestLostGrid || itemsGrid) {
         try {
             // 1. Get Filters from URL
             const urlParams = new URLSearchParams(window.location.search);
-            const typeFilter = urlParams.get('type') || 'all';
+            const typeFilter = urlParams.get('type') || 'lost'; // Default to LOST
             const categoryFilter = urlParams.get('category') || 'all';
             const searchFilter = urlParams.get('search') || '';
 
             // 2. Set Form Values (Sync UI with URL)
             if (typeSelect) typeSelect.value = typeFilter;
+            // Handle case where 'found' is selected but not visible/allowed? 
+            // For now, keep it simple. If staff uses type=found, let it work.
+            // But if regular user lands here, it defaults to lost.
+
             if (categorySelect) categorySelect.value = categoryFilter;
             if (searchInput) searchInput.value = searchFilter;
 
             // 3. Build Query
-            // Note: Firestore requires composite indexes for multiple 'where' clauses.
-            // For now, we'll fetch approved items and filter in-memory for simplicity & robustness without index setup.
-            // In a production app with thousands of items, you MUST create indexes.
-
             const q = query(
                 collection(db, "items"),
-                where("reviewStatus", "==", "approved"),
                 where("status", "==", "active"),
                 orderBy("createdAt", "desc"),
                 limit(50)
@@ -276,11 +265,10 @@ if (latestFoundGrid || latestLostGrid || itemsGrid) {
 
         // 5. Handle Filter Form Submit (Update URL)
         if (filterForm) {
-            // Remove existing listener if any (cleaner way is difficult without named function, but for this simpler app it's fine)
-            // Just attach new one. The browser reloads anyway.
             filterForm.onsubmit = (e) => {
                 e.preventDefault();
-                const newType = typeSelect.value;
+                // Default to 'lost' if element is missing.
+                const newType = typeSelect ? typeSelect.value : 'lost';
                 const newCategory = categorySelect.value;
                 const newSearch = searchInput.value;
 
@@ -301,72 +289,72 @@ if (latestFoundGrid || latestLostGrid || itemsGrid) {
     if (itemsGrid) {
         fetchBrowseItems();
     }
+}
 
-    // Fetch Homepage Stats
-    const fetchHomeStats = async () => {
-        try {
-            // Get Total Items Reported
-            const itemsSnapshot = await getDocs(collection(db, "items"));
-            const totalItems = itemsSnapshot.size;
+// Fetch Homepage Stats
+const fetchHomeStats = async () => {
+    try {
+        // Get Total Items Reported
+        const itemsSnapshot = await getDocs(collection(db, "items"));
+        const totalItems = itemsSnapshot.size;
 
-            // Get Items Returned (Status 'resolved')
-            const qResolved = query(collection(db, "items"), where("status", "==", "resolved"));
-            const resolvedSnapshot = await getDocs(qResolved);
-            const totalResolved = resolvedSnapshot.size;
+        // Get Items Returned (Status 'resolved')
+        const qResolved = query(collection(db, "items"), where("status", "==", "resolved"));
+        const resolvedSnapshot = await getDocs(qResolved);
+        const totalResolved = resolvedSnapshot.size;
 
-            // Get Active Students (Users)
-            const usersSnapshot = await getDocs(collection(db, "users"));
-            const totalUsers = usersSnapshot.size;
+        // Get Active Students (Users)
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const totalUsers = usersSnapshot.size;
 
-            // Create a mapping of stat labels to their new values
-            const statMap = {
-                "Items Reported": totalItems,
-                "Items Returned": totalResolved,
-                "Active Students": totalUsers
-            };
+        // Create a mapping of stat labels to their new values
+        const statMap = {
+            "Items Reported": totalItems,
+            "Items Returned": totalResolved,
+            "Active Students": totalUsers
+        };
 
-            // Update DOM
-            document.querySelectorAll('.stat-item').forEach(item => {
-                const label = item.querySelector('p').textContent.trim();
-                const counterElement = item.querySelector('.counter');
+        // Update DOM
+        document.querySelectorAll('.stat-item').forEach(item => {
+            const label = item.querySelector('p').textContent.trim();
+            const counterElement = item.querySelector('.counter');
 
-                if (statMap[label] !== undefined) {
-                    const finalValue = statMap[label];
-                    // Animate the counter
-                    let start = 0;
-                    const duration = 2000;
-                    const startTime = performance.now();
+            if (statMap[label] !== undefined) {
+                const finalValue = statMap[label];
+                // Animate the counter
+                let start = 0;
+                const duration = 2000;
+                const startTime = performance.now();
 
-                    function update(currentTime) {
-                        const elapsed = currentTime - startTime;
-                        const progress = Math.min(elapsed / duration, 1);
+                function update(currentTime) {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
 
-                        // Ease out quart
-                        const ease = 1 - Math.pow(1 - progress, 4);
+                    // Ease out quart
+                    const ease = 1 - Math.pow(1 - progress, 4);
 
-                        const current = Math.floor(ease * finalValue);
-                        counterElement.textContent = current + "+";
-                        counterElement.setAttribute('data-target', finalValue);
+                    const current = Math.floor(ease * finalValue);
+                    counterElement.textContent = current + "+";
+                    counterElement.setAttribute('data-target', finalValue);
 
-                        if (progress < 1) {
-                            requestAnimationFrame(update);
-                        } else {
-                            counterElement.textContent = finalValue + "+";
-                        }
+                    if (progress < 1) {
+                        requestAnimationFrame(update);
+                    } else {
+                        counterElement.textContent = finalValue + "+";
                     }
-                    requestAnimationFrame(update);
                 }
-            });
+                requestAnimationFrame(update);
+            }
+        });
 
-        } catch (error) {
-            console.error("Error fetching stats:", error);
-        }
-    };
-
-    // Only run on homepage
-    if (document.querySelector('.stats-section')) {
-        fetchHomeStats();
+    } catch (error) {
+        console.error("Error fetching stats:", error);
     }
+};
+
+// Only run on homepage
+if (document.querySelector('.stats-section')) {
+    fetchHomeStats();
 }
 
 // Fetch My Posts (User Dashboard)
@@ -453,7 +441,7 @@ if (itemDetailContainer) {
                 const buttonText = item.type === 'found' ? 'Claim This Item' : 'I Found This!';
 
                 itemDetailContainer.innerHTML = `
-                    < div style = "display: flex; gap: 40px; flex-wrap: wrap;" >
+                    <div style="display: flex; gap: 40px; flex-wrap: wrap;">
                          <div style="flex: 1; min-width: 300px;">
                             <img src="${item.imageUrl || 'https://via.placeholder.com/600x400?text=No+Image'}" style="width: 100%; border-radius: 8px;">
                         </div>
@@ -481,7 +469,7 @@ if (itemDetailContainer) {
                                 </form>
                             </div>
                         </div>
-                    </div >
+                    </div>
                     `;
 
                 // Handle Claim Button

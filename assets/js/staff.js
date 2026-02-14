@@ -15,65 +15,75 @@ const pendingClaimsList = document.getElementById('review-claims-list');
 const statsPosts = document.getElementById('pending-posts');
 const statsClaims = document.getElementById('pending-claims');
 
-// Fetch Pending Posts
+// Fetch Found Items (For Staff/Admin Only)
 if (pendingPostsList) {
-    const fetchPendingPosts = async () => {
-        const q = query(collection(db, "items"), where("reviewStatus", "==", "pending"));
-        const querySnapshot = await getDocs(q);
+    const fetchFoundItemsList = async () => {
+        // Fetch all FOUND items, ordered by date
+        const q = query(
+            collection(db, "items"),
+            where("type", "==", "found"),
+            where("status", "==", "active"), // Only active ones
+            orderBy("createdAt", "desc")
+        );
 
-        pendingPostsList.innerHTML = '';
-        if (querySnapshot.empty) {
-            pendingPostsList.innerHTML = '<p>No pending posts to review.</p>';
-            return;
-        }
+        try {
+            const querySnapshot = await getDocs(q);
 
-        querySnapshot.forEach((docSnap) => {
-            const item = docSnap.data();
-            const div = document.createElement('div');
-            div.className = 'post-item';
-            div.innerHTML = `
-                <div style="display: flex; gap: 15px; align-items: start;">
-                    <img src="${item.imageUrl || 'https://via.placeholder.com/150'}" alt="Item Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
-                    <div>
-                        <h3>${item.title} (${item.type})</h3>
-                        <p><strong>Posted by:</strong> ${item.creatorName}</p>
-                        <p>${item.description}</p>
-                        <p><small>${item.date} | ${item.location}</small></p>
+            pendingPostsList.innerHTML = '';
+            if (querySnapshot.empty) {
+                pendingPostsList.innerHTML = '<p>No found items reported yet.</p>';
+                return;
+            }
+
+            querySnapshot.forEach((docSnap) => {
+                const item = docSnap.data();
+                const div = document.createElement('div');
+                div.className = 'post-item';
+                div.innerHTML = `
+                    <div style="display: flex; gap: 15px; align-items: start;">
+                        <img src="${item.imageUrl || 'https://via.placeholder.com/150'}" alt="Item Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
+                        <div>
+                            <h3>${item.title}</h3>
+                            <p><strong>Found by:</strong> ${item.creatorName}</p>
+                            <p>${item.description}</p>
+                            <p><small>${item.date} | ${item.location}</small></p>
+                            <a href="../item-details.html?id=${docSnap.id}" target="_blank" style="color: var(--primary-color);">View Details <i class="fas fa-external-link-alt"></i></a>
+                        </div>
                     </div>
-                </div>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button class="btn btn-primary approve-post-btn" data-id="${docSnap.id}">Approve</button>
-                    <button class="btn btn-danger reject-post-btn" style="background: var(--danger); color: white;" data-id="${docSnap.id}">Reject</button>
-                </div>
-            `;
-            pendingPostsList.appendChild(div);
-        });
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn btn-danger delete-post-btn" style="background: var(--danger); color: white;" data-id="${docSnap.id}">Delete Post</button>
+                    </div>
+                `;
+                pendingPostsList.appendChild(div);
+            });
 
-        // Add Event Listeners
-        document.querySelectorAll('.approve-post-btn').forEach(btn => {
-            btn.addEventListener('click', () => updatePostStatus(btn.dataset.id, 'approved'));
-        });
-        document.querySelectorAll('.reject-post-btn').forEach(btn => {
-            btn.addEventListener('click', () => updatePostStatus(btn.dataset.id, 'rejected'));
-        });
+            // Add Event Listeners
+            document.querySelectorAll('.delete-post-btn').forEach(btn => {
+                btn.addEventListener('click', () => deletePost(btn.dataset.id));
+            });
+        } catch (error) {
+            console.error("Error fetching found items:", error);
+            pendingPostsList.innerHTML = '<p>Error loading items.</p>';
+        }
     };
 
-    fetchPendingPosts();
+    fetchFoundItemsList();
 }
 
-async function updatePostStatus(itemId, status) {
+async function deletePost(itemId) {
+    if (!confirm("Are you sure you want to delete this found item post?")) return;
+
     try {
         const itemRef = doc(db, "items", itemId);
         await updateDoc(itemRef, {
-            reviewStatus: status,
-            status: status === 'approved' ? 'active' : 'removed', // Set to active if approved
-            reviewedBy: auth.currentUser.uid,
-            reviewedAt: serverTimestamp()
+            status: 'removed',
+            removedBy: auth.currentUser.uid,
+            removedAt: serverTimestamp()
         });
-        alert(`Post ${status} successfully.`);
+        alert(`Post deleted successfully.`);
         window.location.reload();
     } catch (error) {
-        console.error("Error updating post:", error);
+        console.error("Error deleting post:", error);
         alert("Error: " + error.message);
     }
 }
