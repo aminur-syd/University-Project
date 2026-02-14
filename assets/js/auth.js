@@ -160,7 +160,7 @@ if (registerForm) {
         const input = document.getElementById(id);
         if (!input) return;
 
-        input.addEventListener('input', () => {
+        input.addEventListener('blur', () => {
             if (id === 'name') validateField(input, input.value.trim().split(' ').length >= 2, "Please enter your full name (First and Last name).", 'name-error');
             if (id === 'email') validateField(input, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value), "Please enter a valid email address.", 'email-error');
             if (id === 'phone') validateField(input, /^\d{11}$/.test(input.value), "Phone number must be exactly 11 digits (e.g., 01xxxxxxxxx).", 'phone-error');
@@ -292,8 +292,10 @@ if (registerForm) {
             errorDiv.style.display = 'block';
             if (error.code === 'auth/email-already-in-use') {
                 errorDiv.textContent = "This email is already registered.";
+            } else if (error.code === 'auth/operation-not-allowed') {
+                errorDiv.textContent = "Email/Password sign-up is disabled in Firebase Console. Please enable it authentication methods.";
             } else {
-                errorDiv.textContent = error.message;
+                errorDiv.textContent = "Error: " + error.message;
             }
         }
     });
@@ -331,7 +333,7 @@ if (loginForm) {
             }
         } catch (error) {
             errorDiv.style.display = 'block';
-            errorDiv.textContent = "Invalid email or password.";
+            errorDiv.textContent = "Error: " + error.message; // Show detailed error
             console.error(error);
         }
     });
@@ -364,16 +366,32 @@ onAuthStateChanged(auth, async (user) => {
             authLinks.style.display = 'none';
             userLinks.style.display = 'flex';
 
-            // Set dynamic dashboard link
+            // Welcome Message
+            const welcomeMsg = document.getElementById('welcome-msg');
             const dashboardLink = document.getElementById('dashboard-link');
-            if (dashboardLink) {
+
+            if (welcomeMsg || dashboardLink) {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
+                let name = user.displayName;
+                let role = "user";
+
                 if (userDoc.exists()) {
-                    const role = userDoc.data().role;
-                    dashboardLink.href = `${role}/dashboard.html`;
-                } else {
-                    dashboardLink.href = "user/dashboard.html";
+                    const userData = userDoc.data();
+                    role = userData.role;
+                    if (userData.name) name = userData.name;
                 }
+
+                // Fallback to email username if name is still missing
+                if (!name && user.email) {
+                    name = user.email.split('@')[0];
+                    // Capitalize first letter
+                    name = name.charAt(0).toUpperCase() + name.slice(1);
+                }
+
+                name = name || "User";
+
+                if (welcomeMsg) welcomeMsg.textContent = `Welcome, ${name}`;
+                if (dashboardLink) dashboardLink.href = `${role}/dashboard.html`;
             }
 
         } else {

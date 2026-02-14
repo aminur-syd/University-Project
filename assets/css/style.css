@@ -92,6 +92,13 @@ h6 {
     gap: 30px;
 }
 
+#user-links,
+#auth-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
 .nav-links a:not(.btn) {
     color: var(--text-color);
     font-weight: 500;
