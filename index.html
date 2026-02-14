@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lost & Found Management System</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">Lost & Found</a>
+            <div class="nav-links">
+                <a href="index.html" class="active">Home</a>
+                <a href="browse.html">Browse Items</a>
+                <div id="auth-links">
+                    <a href="login.html" class="btn btn-secondary">Login</a>
+                    <a href="register.html" class="btn btn-primary">Register</a>
+                </div>
+                <div id="user-links" style="display: none;">
+                    <a href="#" id="dashboard-link">Dashboard</a>
+                    <button id="logout-btn" class="btn btn-outline">Logout</button>
+                </div>
+            </div>
+            <div class="hamburger">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Lost something? Default found it.</h1>
+            <p>The easiest way to report lost items and claim found belongings on campus.</p>
+            <div class="hero-buttons">
+                <a href="login.html" class="btn btn-primary">Report Lost Item</a>
+                <a href="browse.html" class="btn btn-secondary">Browse Found Items</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Latest Items Section -->
+    <section class="latest-items">
+        <div class="section-header">
+            <h2>Recently Found Items</h2>
+            <a href="browse.html" class="view-all">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="items-grid" id="latest-items-grid">
+            <!-- Items will be populated by JS -->
+            <div class="loading-spinner">Loading items...</div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2026 Lost & Found Management System. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Firebase SDKs -->
+    <script type="module" src="assets/js/firebase-config.js"></script>
+    <script type="module" src="assets/js/auth.js"></script>
+    <script type="module" src="assets/js/posts.js"></script>
+    <script>
+        // Simple script to toggle mobile menu
+        document.querySelector('.hamburger').addEventListener('click', () => {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+    </script>
+</body>
+
+</html>

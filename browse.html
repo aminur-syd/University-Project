@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Items - Lost & Found</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .filters-section {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: var(--border-radius);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">Lost & Found</a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="browse.html" class="active">Browse Items</a>
+                <div id="auth-links">
+                    <a href="login.html" class="btn btn-secondary">Login</a>
+                    <a href="register.html" class="btn btn-primary">Register</a>
+                </div>
+                <div id="user-links" style="display: none;">
+                    <a href="#" id="dashboard-link">Dashboard</a>
+                    <button id="logout-btn" class="btn btn-outline">Logout</button>
+                </div>
+            </div>
+            <div class="hamburger">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="filters-section">
+            <form id="filter-form" class="filter-form">
+                <div class="filter-group">
+                    <label for="search">Search</label>
+                    <input type="text" id="search" class="filter-input" placeholder="Keyword...">
+                </div>
+                <div class="filter-group">
+                    <label for="type">Type</label>
+                    <select id="type" class="filter-input">
+                        <option value="all">All</option>
+                        <option value="lost">Lost</option>
+                        <option value="found">Found</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="category">Category</label>
+                    <select id="category" class="filter-input">
+                        <option value="all">All Categories</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Wallet">Wallet/Purse</option>
+                        <option value="ID">ID/Documents</option>
+                        <option value="Keys">Keys</option>
+                        <option value="Clothing">Clothing</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </form>
+        </div>
+
+        <section class="items-grid" id="items-grid">
+            <!-- Items will be populated here -->
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px;">Loading items...</div>
+        </section>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module" src="assets/js/firebase-config.js"></script>
+    <script type="module" src="assets/js/auth.js"></script>
+    <script type="module" src="assets/js/posts.js"></script>
+    <script>
+        document.querySelector('.hamburger').addEventListener('click', () => {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+    </script>
+</body>
+
+</html>

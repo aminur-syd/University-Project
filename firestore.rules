@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User Helper Function
+    function isUser() {
+      return request.auth != null;
+    }
+    
+    function isStaff() {
+      // In a real app, you might use Custom Claims or look up the user doc
+      // specific logic depends on how you set roles. 
+      // secure way: get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin']
+      return isUser() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin'];
+    }
+
+    function isAdmin() {
+      return isUser() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isUser(); // Users can read profiles (or strict to own)
+      allow create: if isUser() && request.auth.uid == userId; // specific fields validation recommended
+      allow update: if isUser() && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+
+    // Items Collection
+    match /items/{itemId} {
+      // Public can read approved active items
+      allow read: if (resource.data.reviewStatus == 'approved' && resource.data.status == 'active') || isStaff() || (isUser() && resource.data.createdBy == request.auth.uid);
+      
+      // Users can create items
+      allow create: if isUser();
+      
+      // Users can update their own pending items? Or only staff can update status
+      allow update: if (isUser() && resource.data.createdBy == request.auth.uid && request.resource.data.reviewStatus == resource.data.reviewStatus) || isStaff();
+      
+      allow delete: if isAdmin();
+    }
+
+    // Claims Collection
+    match /claims/{claimId} {
+      allow read: if (isUser() && resource.data.claimerUid == request.auth.uid) || isStaff();
+      allow create: if isUser();
+      allow update: if isStaff(); // Only staff updates status
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Item - Lost & Found</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Reuse dashboard styles */
+        .dashboard-container {
+            display: flex;
+            min-height: calc(100vh - 74px);
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px 0;
+            display: flex;
+            flexDirection: column;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--text-color);
+            font-weight: 500;
+            transition: var(--transition);
+            gap: 10px;
+        }
+
+        .sidebar-menu li a:hover,
+        .sidebar-menu li a.active {
+            background-color: #f3f4f6;
+            color: var(--primary-color);
+            border-right: 3px solid var(--primary-color);
+        }
+
+        .form-card {
+            background: white;
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            max-width: 800px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: var(--border-radius);
+            font-family: inherit;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="logo">Lost & Found</a>
+            <div class="nav-links">
+                <span style="font-weight: 600;">Welcome, <span id="user-name">User</span></span>
+                <button id="logout-btn" class="btn btn-outline"
+                    style="color: var(--text-color); border-color: var(--text-color);">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="create-post.html" class="active"><i class="fas fa-plus-circle"></i> Post Item</a></li>
+                <li><a href="my-posts.html"><i class="fas fa-list"></i> My Posts</a></li>
+                <li><a href="my-claims.html"><i class="fas fa-hand-holding"></i> My Claims</a></li>
+                <li><a href="../index.html"><i class="fas fa-arrow-left"></i> Back to Home</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <h2>Post a Lost or Found Item</h2>
+            <div class="form-card">
+                <form id="create-post-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="type">Type</label>
+                            <select id="type" class="form-control" required>
+                                <option value="lost">Lost Item</option>
+                                <option value="found">Found Item</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="category">Category</label>
+                            <select id="category" class="form-control" required>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Wallet">Wallet/Purse</option>
+                                <option value="ID">ID/Documents</option>
+                                <option value="Bag">Bag</option>
+                                <option value="Keys">Keys</option>
+                                <option value="Clothing">Clothing</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="title">Item Name / Title</label>
+                            <input type="text" id="title" class="form-control" placeholder="e.g. Blue iPhone 13"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="date">Date Lost/Found</label>
+                            <input type="date" id="date" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="location">Location</label>
+                            <input type="text" id="location" class="form-control" placeholder="e.g. Library 2nd Floor"
+                                required>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="description">Description (Be specific)</label>
+                            <textarea id="description" class="form-control" rows="4" required></textarea>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="image">Upload Image (Optional)</label>
+                            <input type="file" id="image" class="form-control" accept="image/*">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Submit Post</button>
+                    <p id="submit-message" style="margin-top: 10px; display: none;"></p>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="../assets/js/firebase-config.js"></script>
+    <script type="module" src="../assets/js/auth.js"></script>
+    <script type="module" src="../assets/js/posts.js"></script>
+</body>
+
+</html>
