@@ -16,6 +16,8 @@ A modern, responsive web application designed to help university students, staff
 - **Responsive Design**: optimized for both desktop and mobile devices.
 - **Modern Aesthetics**: Clean UI with Google Fonts (Inter), Font Awesome icons, and smooth transitions.
 - **Dynamic Content**: Real-time updates for lost and found items using Firestore.
+- **Team Section**: 'Our Team' section featuring member profiles with professional styling and social links.
+- **Admin Enhancements**: Improved navigation context and dedicated review pages for administrators.
 
 ## 🛠️ Tech Stack
 
