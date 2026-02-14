@@ -138,6 +138,106 @@ const userLinks = document.getElementById('user-links');
 
 // Register User
 if (registerForm) {
+    // Real-time Validation Logic
+    const validateField = (input, condition, message, errorId) => {
+        const errorEl = document.getElementById(errorId);
+        if (!condition) {
+            input.classList.add('error');
+            input.classList.remove('success');
+            errorEl.style.display = 'block';
+            errorEl.textContent = message;
+            return false;
+        } else {
+            input.classList.remove('error');
+            input.classList.add('success');
+            errorEl.style.display = 'none';
+            return true;
+        }
+    };
+
+    // Input Listeners
+    ['name', 'email', 'phone', 'address', 'city', 'zip'].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+
+        input.addEventListener('input', () => {
+            if (id === 'name') validateField(input, input.value.trim().split(' ').length >= 2, "Please enter your full name (First and Last name).", 'name-error');
+            if (id === 'email') validateField(input, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value), "Please enter a valid email address.", 'email-error');
+            if (id === 'phone') validateField(input, /^\d{11}$/.test(input.value), "Phone number must be exactly 11 digits (e.g., 01xxxxxxxxx).", 'phone-error');
+            if (id === 'address') validateField(input, input.value.length > 5, "Address is too short.", 'address-error');
+            if (id === 'city') validateField(input, input.value.length > 2, "City name is too short.", 'city-error');
+            if (id === 'zip') validateField(input, input.value.length >= 4, "Invalid Zip Code.", 'zip-error');
+        });
+    });
+
+    const passwordInput = document.getElementById('password');
+    if (passwordInput) {
+        passwordInput.addEventListener('input', () => {
+            const val = passwordInput.value;
+            const reqList = document.getElementById('password-requirements');
+            const reqLength = document.getElementById('req-length');
+            const reqCapital = document.getElementById('req-capital');
+            const reqNumber = document.getElementById('req-number');
+
+            // Reset visibility if empty
+            if (val.length === 0) {
+                reqList.style.display = 'none';
+                passwordInput.classList.remove('error', 'success');
+                return;
+            }
+
+            // Check Criteria
+            const isLengthValid = val.length >= 6;
+            const isCapitalValid = /[A-Z]/.test(val);
+            const isNumberValid = /\d/.test(val);
+            const isAllValid = isLengthValid && isCapitalValid && isNumberValid;
+
+            // Update UI for Length
+            if (isLengthValid) {
+                reqLength.classList.add('valid');
+                reqLength.classList.remove('invalid');
+                reqLength.querySelector('i').className = 'fas fa-check-circle';
+            } else {
+                reqLength.classList.remove('valid');
+                reqLength.classList.add('invalid');
+                reqLength.querySelector('i').className = 'fas fa-circle';
+            }
+
+            // Update UI for Capital
+            if (isCapitalValid) {
+                reqCapital.classList.add('valid');
+                reqCapital.classList.remove('invalid');
+                reqCapital.querySelector('i').className = 'fas fa-check-circle';
+            } else {
+                reqCapital.classList.remove('valid');
+                reqCapital.classList.add('invalid');
+                reqCapital.querySelector('i').className = 'fas fa-circle';
+            }
+
+            // Update UI for Number
+            if (isNumberValid) {
+                reqNumber.classList.add('valid');
+                reqNumber.classList.remove('invalid');
+                reqNumber.querySelector('i').className = 'fas fa-check-circle';
+            } else {
+                reqNumber.classList.remove('valid');
+                reqNumber.classList.add('invalid');
+                reqNumber.querySelector('i').className = 'fas fa-circle';
+            }
+
+            // Logic: Show list if typing AND not all valid. Hide if all valid.
+            if (isAllValid) {
+                passwordInput.classList.remove('error');
+                passwordInput.classList.add('success');
+                reqList.style.display = 'none'; // Hide list when valid
+            } else {
+                passwordInput.classList.add('error');
+                passwordInput.classList.remove('success');
+                reqList.style.display = 'block'; // Show list when invalid
+            }
+        });
+    }
+
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('name').value.trim();
@@ -152,28 +252,21 @@ if (registerForm) {
         // Validation Rules
         errorDiv.style.display = 'none';
 
-        // 1. Full Name: At least 2 words
-        if (name.split(' ').length < 2) {
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = "Please enter your full name (First and Last name).";
-            return;
+        // Final Verification before submit
+        let isValid = true;
+        if (!validateField(document.getElementById('name'), name.split(' ').length >= 2, "Please enter your full name.", 'name-error')) isValid = false;
+        if (!validateField(document.getElementById('email'), /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "Invalid email.", 'email-error')) isValid = false;
+        if (!validateField(document.getElementById('phone'), /^\d{11}$/.test(phone), "Phone number must be exactly 11 digits.", 'phone-error')) isValid = false;
+        if (!validateField(document.getElementById('password'), /^(?=.*[A-Z])(?=.*\d).{6,}$/.test(password), "", 'register-error')) {
+            // For password, visual cues are enough, but we stop submit. 
+            // Logic above uses 'register-error' as dummyID or we can just rely on boolean
+        }
+        if (!/^(?=.*[A-Z])(?=.*\d).{6,}$/.test(password)) {
+            isValid = false;
+            document.getElementById('password').classList.add('error');
         }
 
-        // 2. Email: Basic regex check
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = "Please enter a valid email address.";
-            return;
-        }
-
-        // 3. Password: 6 chars, 1 capital, 1 number
-        const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{6,}$/;
-        if (!passwordRegex.test(password)) {
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = "Password must be at least 6 characters long, contain 1 capital letter and 1 number.";
-            return;
-        }
+        if (!isValid) return;
 
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);

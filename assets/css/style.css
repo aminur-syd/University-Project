@@ -644,3 +644,48 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+/* Validation Styles */
+.form-control.error {
+    border-color: var(--danger);
+    background-color: rgba(239, 68, 68, 0.05);
+}
+
+.form-control.success {
+    border-color: var(--success);
+}
+
+.validation-message {
+    font-size: 0.8rem;
+    color: var(--danger);
+    margin-top: 5px;
+    display: none;
+}
+
+.password-requirements {
+    font-size: 0.8rem;
+    margin-top: 8px;
+    color: #6b7280;
+    list-style: none;
+    padding: 0;
+    display: none;
+}
+
+.password-requirements li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.password-requirements li i {
+    font-size: 0.7rem;
+}
+
+.password-requirements li.valid {
+    color: var(--success);
+}
+
+.password-requirements li.invalid {
+    color: var(--danger);
+}
