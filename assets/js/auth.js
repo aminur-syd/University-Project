@@ -8,7 +8,8 @@ import {
     GoogleAuthProvider,
     signInWithPopup,
     RecaptchaVerifier,
-    signInWithPhoneNumber
+    signInWithPhoneNumber,
+    sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     doc,
@@ -130,6 +131,74 @@ if (googleBtn) {
         } catch (error) {
             console.error("Google Sign-In Error:", error);
             alert("Google Sign-In failed: " + error.message);
+        }
+    });
+}
+
+// Forgot Password Logic
+const forgotPasswordLink = document.getElementById('forgot-password-link');
+const forgotPasswordSection = document.getElementById('forgot-password-section');
+const backToLoginBtn = document.getElementById('back-to-login-btn');
+const resetPasswordBtn = document.getElementById('reset-password-btn');
+const resetMessage = document.getElementById('reset-message');
+
+if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        emailAuthSection.style.display = 'none';
+        phoneAuthSection.style.display = 'none';
+        forgotPasswordSection.style.display = 'block';
+        if (document.querySelector('.auth-header p')) {
+            document.querySelector('.auth-header p').textContent = "Reset your password";
+        }
+    });
+}
+
+if (backToLoginBtn) {
+    backToLoginBtn.addEventListener('click', () => {
+        forgotPasswordSection.style.display = 'none';
+        emailAuthSection.style.display = 'block';
+        if (document.querySelector('.auth-header p')) {
+            document.querySelector('.auth-header p').textContent = "Login to your account";
+        }
+        resetMessage.style.display = 'none';
+    });
+}
+
+if (resetPasswordBtn) {
+    resetPasswordBtn.addEventListener('click', async () => {
+        const email = document.getElementById('reset-email').value.trim();
+        resetMessage.style.display = 'none';
+
+        if (!email) {
+            resetMessage.style.display = 'block';
+            resetMessage.style.color = 'red';
+            resetMessage.textContent = "Please enter your email address.";
+            return;
+        }
+
+        resetPasswordBtn.disabled = true;
+        resetPasswordBtn.textContent = "Sending...";
+
+        try {
+            await sendPasswordResetEmail(auth, email);
+            resetMessage.style.display = 'block';
+            resetMessage.style.color = 'green';
+            resetMessage.textContent = "Password reset email sent! Check your inbox.";
+        } catch (error) {
+            console.error("Error sending reset email:", error);
+            resetMessage.style.display = 'block';
+            resetMessage.style.color = 'red';
+            if (error.code === 'auth/user-not-found') {
+                resetMessage.textContent = "No account found with this email.";
+            } else if (error.code === 'auth/invalid-email') {
+                resetMessage.textContent = "Invalid email address.";
+            } else {
+                resetMessage.textContent = "Error: " + error.message;
+            }
+        } finally {
+            resetPasswordBtn.disabled = false;
+            resetPasswordBtn.textContent = "Send Reset Link";
         }
     });
 }
