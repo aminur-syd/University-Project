@@ -27,6 +27,30 @@
         .main-content {
             flex: 1;
             padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--text-color);
+            font-weight: 500;
+            transition: var(--transition);
+            gap: 10px;
+        }
+
+        .sidebar-menu li a:hover,
+        .sidebar-menu li a.active {
+            background-color: #f3f4f6;
+            color: var(--primary-color);
+            border-right: 3px solid var(--primary-color);
         }
 
         .sidebar-menu {
@@ -56,6 +80,7 @@
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
             max-width: 800px;
+            width: 100%;
         }
 
         .form-grid {
