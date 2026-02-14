@@ -83,22 +83,56 @@
                 <h2>Welcome Back</h2>
                 <p>Login to your account</p>
             </div>
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" class="form-control" required>
-                </div>
-                <div class="error-message" id="login-error"></div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
-            </form>
-            <div class="auth-footer">
-                <p>Don't have an account? <a href="register.html" style="color: var(--primary-color);">Register here</a>
-                </p>
+            <!-- Email Login Section -->
+            <div id="email-auth-section">
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" class="form-control" required placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" class="form-control" required
+                            placeholder="Enter your password">
+                    </div>
+                    <div class="error-message" id="login-error"></div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                </form>
             </div>
+
+            <!-- Phone Login Section (Hidden by default) -->
+            <div id="phone-auth-section" style="display: none; margin-top: 20px;">
+                <div id="phone-group">
+                    <div class="form-group">
+                        <label for="phone-number">Phone Number</label>
+                        <input type="tel" id="phone-number" class="form-control" placeholder="+1 234 567 8900">
+                    </div>
+                    <div id="recaptcha-container" style="margin-bottom: 15px;"></div>
+                    <button id="send-code-btn" class="btn btn-primary" style="width: 100%;">Send Code</button>
+                </div>
+
+                <div id="otp-group" style="display: none;">
+                    <div class="form-group">
+                        <label for="otp-code">Verification Code</label>
+                        <input type="text" id="otp-code" class="form-control" placeholder="123456">
+                    </div>
+                    <button id="verify-code-btn" class="btn btn-success" style="width: 100%;">Verify Code</button>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: 20px 0; display: flex; flex-direction: column; gap: 10px;">
+                <p>OR</p>
+                <button id="google-btn" class="btn btn-secondary"
+                    style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i class="fab fa-google"></i> Sign in with Google
+                </button>
+                <button id="phone-login-btn" class="btn btn-outline-dark"
+                    style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i class="fas fa-phone"></i> Login with Phone
+                </button>
+            </div>
+            <p style="text-align: center; margin-top: 15px;">Don't have an account? <a href="register.html"
+                    style="color: var(--primary-color);">Register here</a></p>
         </div>
     </div>
 

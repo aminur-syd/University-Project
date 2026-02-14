@@ -4,18 +4,135 @@ import {
     signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    updateProfile
+    updateProfile,
+    GoogleAuthProvider,
+    signInWithPopup,
+    RecaptchaVerifier,
+    signInWithPhoneNumber
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     doc,
     setDoc,
-    getDoc
+    getDoc,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // DOM Elements
 const loginForm = document.getElementById('login-form');
+const phoneLoginBtn = document.getElementById('phone-login-btn');
+const phoneAuthSection = document.getElementById('phone-auth-section');
+const emailAuthSection = document.getElementById('email-auth-section');
+const sendCodeBtn = document.getElementById('send-code-btn');
+const verifyCodeBtn = document.getElementById('verify-code-btn');
+const recaptchaContainer = document.getElementById('recaptcha-container');
+
+if (phoneLoginBtn) {
+    phoneLoginBtn.addEventListener('click', () => {
+        if (phoneAuthSection.style.display === 'none') {
+            phoneAuthSection.style.display = 'block';
+            emailAuthSection.style.display = 'none';
+            phoneLoginBtn.innerHTML = '<i class="fas fa-envelope"></i> Login with Email';
+
+            if (!window.recaptchaVerifier) {
+                window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                    'size': 'normal'
+                });
+                window.recaptchaVerifier.render();
+            }
+        } else {
+            phoneAuthSection.style.display = 'none';
+            emailAuthSection.style.display = 'block';
+            phoneLoginBtn.innerHTML = '<i class="fas fa-phone"></i> Login with Phone';
+        }
+    });
+}
+
+if (sendCodeBtn) {
+    sendCodeBtn.addEventListener('click', async () => {
+        const phoneNumber = document.getElementById('phone-number').value;
+        const appVerifier = window.recaptchaVerifier;
+        try {
+            window.confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+            document.getElementById('otp-group').style.display = 'block';
+            document.getElementById('phone-group').style.display = 'none';
+            alert("Code sent!");
+        } catch (error) {
+            console.error("Error sending code:", error);
+            alert("Error sending SMS: " + error.message);
+        }
+    });
+}
+
+if (verifyCodeBtn) {
+    verifyCodeBtn.addEventListener('click', async () => {
+        const code = document.getElementById('otp-code').value;
+        try {
+            const result = await window.confirmationResult.confirm(code);
+            const user = result.user;
+
+            // Check/Create User Document
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) {
+                await setDoc(userDocRef, {
+                    name: "Phone User",
+                    email: "",
+                    role: "user",
+                    createdAt: serverTimestamp()
+                });
+            }
+
+            // Redirect
+            const role = userDoc.exists() ? userDoc.data().role : "user";
+            if (role === 'admin') window.location.href = "admin/dashboard.html";
+            else if (role === 'staff') window.location.href = "staff/dashboard.html";
+            else window.location.href = "user/dashboard.html";
+
+        } catch (error) {
+            console.error("OTP verification failed:", error);
+            alert("Incorrect code");
+        }
+    });
+}
 const registerForm = document.getElementById('register-form');
+const googleBtn = document.getElementById('google-btn'); // New Google Button
 const logoutBtn = document.getElementById('logout-btn');
+
+// Google Sign-In Logic
+if (googleBtn) {
+    googleBtn.addEventListener('click', async () => {
+        const provider = new GoogleAuthProvider();
+        try {
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            // Check if user exists in Firestore
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) {
+                // Create new user document
+                await setDoc(userDocRef, {
+                    name: user.displayName,
+                    email: user.email,
+                    role: "user",
+                    createdAt: serverTimestamp()
+                });
+            }
+
+            // Redirect based on role
+            const role = userDoc.exists() ? userDoc.data().role : "user";
+            if (role === 'admin') window.location.href = "admin/dashboard.html";
+            else if (role === 'staff') window.location.href = "staff/dashboard.html";
+            else window.location.href = "user/dashboard.html";
+
+        } catch (error) {
+            console.error("Google Sign-In Error:", error);
+            alert("Google Sign-In failed: " + error.message);
+        }
+    });
+}
 const authLinks = document.getElementById('auth-links');
 const userLinks = document.getElementById('user-links');
 
