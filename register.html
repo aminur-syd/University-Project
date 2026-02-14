@@ -93,15 +93,33 @@
                     <input type="email" id="email" class="form-control" required>
                 </div>
                 <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" class="form-control" required>
+                </div>
+                <div class="form-group">
                     <label for="password">Password</label>
                     <input type="password" id="password" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <input type="text" id="address" class="form-control" required>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="city">City</label>
+                        <input type="text" id="city" class="form-control" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="zip">Zip Code</label>
+                        <input type="text" id="zip" class="form-control" required>
+                    </div>
                 </div>
                 <div class="error-message" id="register-error"></div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
             </form>
             <div style="text-align: center; margin: 20px 0;">
                 <p>OR</p>
-                <button id="google-btn" class="btn btn-secondary"
+                <button id="google-btn" class="btn btn-google"
                     style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
                     <i class="fab fa-google"></i> Sign up with Google
                 </button>

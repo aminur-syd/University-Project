@@ -88,12 +88,11 @@
                 <form id="login-form">
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input type="email" id="email" class="form-control" required placeholder="Enter your email">
+                        <input type="email" id="email" class="form-control" required>
                     </div>
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" class="form-control" required
-                            placeholder="Enter your password">
+                        <input type="password" id="password" class="form-control" required>
                     </div>
                     <div class="error-message" id="login-error"></div>
                     <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
@@ -105,7 +104,7 @@
                 <div id="phone-group">
                     <div class="form-group">
                         <label for="phone-number">Phone Number</label>
-                        <input type="tel" id="phone-number" class="form-control" placeholder="+1 234 567 8900">
+                        <input type="tel" id="phone-number" class="form-control">
                     </div>
                     <div id="recaptcha-container" style="margin-bottom: 15px;"></div>
                     <button id="send-code-btn" class="btn btn-primary" style="width: 100%;">Send Code</button>
@@ -114,7 +113,7 @@
                 <div id="otp-group" style="display: none;">
                     <div class="form-group">
                         <label for="otp-code">Verification Code</label>
-                        <input type="text" id="otp-code" class="form-control" placeholder="123456">
+                        <input type="text" id="otp-code" class="form-control">
                     </div>
                     <button id="verify-code-btn" class="btn btn-success" style="width: 100%;">Verify Code</button>
                 </div>
@@ -122,7 +121,7 @@
 
             <div style="text-align: center; margin: 20px 0; display: flex; flex-direction: column; gap: 10px;">
                 <p>OR</p>
-                <button id="google-btn" class="btn btn-secondary"
+                <button id="google-btn" class="btn btn-google"
                     style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
                     <i class="fab fa-google"></i> Sign in with Google
                 </button>

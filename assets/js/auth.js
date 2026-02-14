@@ -140,10 +140,40 @@ const userLinks = document.getElementById('user-links');
 if (registerForm) {
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const name = document.getElementById('name').value;
-        const email = document.getElementById('email').value;
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
         const password = document.getElementById('password').value;
+        const address = document.getElementById('address').value.trim();
+        const city = document.getElementById('city').value.trim();
+        const zip = document.getElementById('zip').value.trim();
         const errorDiv = document.getElementById('register-error');
+
+        // Validation Rules
+        errorDiv.style.display = 'none';
+
+        // 1. Full Name: At least 2 words
+        if (name.split(' ').length < 2) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = "Please enter your full name (First and Last name).";
+            return;
+        }
+
+        // 2. Email: Basic regex check
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = "Please enter a valid email address.";
+            return;
+        }
+
+        // 3. Password: 6 chars, 1 capital, 1 number
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{6,}$/;
+        if (!passwordRegex.test(password)) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = "Password must be at least 6 characters long, contain 1 capital letter and 1 number.";
+            return;
+        }
 
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -156,14 +186,22 @@ if (registerForm) {
             await setDoc(doc(db, "users", user.uid), {
                 name: name,
                 email: email,
-                role: "user", // Default role
+                phone: phone, // Save phone number
+                role: "user",
+                address: address,
+                city: city,
+                zip: zip,
                 createdAt: new Date()
-            });
+            }, { merge: true });
 
             window.location.href = "user/dashboard.html";
         } catch (error) {
             errorDiv.style.display = 'block';
-            errorDiv.textContent = error.message;
+            if (error.code === 'auth/email-already-in-use') {
+                errorDiv.textContent = "This email is already registered.";
+            } else {
+                errorDiv.textContent = error.message;
+            }
         }
     });
 }
