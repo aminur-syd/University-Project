@@ -99,8 +99,9 @@
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="../index.html" class="logo">Lost <span style="color: #fca311;">&</span> <span
-                    style="color: var(--secondary-color);">Found</span></a>
+            <a href="../index.html" class="logo">
+                <img src="../assets/images/logo1.png" alt="Lost & Found" class="logo-img">
+            </a>
             <div class="nav-links">
                 <span style="font-weight: 600;">Welcome, <span id="user-name">User</span></span>
                 <button id="logout-btn" class="btn btn-outline"
@@ -155,6 +156,43 @@
             </div>
         </main>
     </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-grid">
+            <div class="footer-col">
+                <h3>
+                    <img src="../assets/images/logo1.png" alt="Lost & Found" class="logo-img" style="height: 50px;">
+                </h3>
+                <p>Helping the university community track lost belongings efficiently and securely.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../browse.html">Browse</a></li>
+                    <li><a href="../login.html">Login</a></li>
+                    <li><a href="../register.html">Register</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Contact</h4>
+                <ul>
+                    <li><i class="fas fa-envelope"></i> 0323653981@student.wub.edu.bd</li>
+                    <li><i class="fas fa-phone"></i> +880 1626 534599</li>
+                    <li><i class="fas fa-map-marker-alt"></i> World university of Bangladesh</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Lost & Found. All rights reserved.</p>
+        </div>
+    </footer>
 
     <script type="module" src="../assets/js/firebase-config.js"></script>
     <script type="module" src="../assets/js/auth.js"></script>
