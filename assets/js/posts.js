@@ -9,7 +9,8 @@ import {
     doc,
     updateDoc,
     serverTimestamp,
-    getDoc
+    getDoc,
+    limit
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
     ref,
@@ -98,7 +99,8 @@ if (latestItemsGrid || itemsGrid) {
                 collection(db, "items"),
                 where("reviewStatus", "==", "approved"),
                 where("status", "==", "active"),
-                orderBy("createdAt", "desc")
+                orderBy("createdAt", "desc"),
+                limit(4)
             );
 
             const querySnapshot = await getDocs(q);
