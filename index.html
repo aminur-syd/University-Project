@@ -121,7 +121,7 @@
         </div>
     </section>
 
-    <!-- Latest Items Section -->
+    <!-- Latest Found Items Section -->
     <section class="latest-items" style="background: white;">
         <div class="container">
             <div class="section-header" data-aos="fade-up">
@@ -130,10 +130,29 @@
                     <p style="color: var(--text-light);">Check out the latest items found on campus. Is one of these
                         yours?</p>
                 </div>
-                <a href="browse.html" class="view-all-btn">View All Items <i class="fas fa-arrow-right"></i></a>
+                <a href="browse.html?type=found" class="view-all-btn">View All Found Items <i
+                        class="fas fa-arrow-right"></i></a>
             </div>
-            <div class="items-grid" id="latest-items-grid" data-aos="fade-up" data-aos-delay="200">
-                <div class="loading-spinner">Loading recent items...</div>
+            <div class="items-grid" id="latest-found-grid" data-aos="fade-up" data-aos-delay="200">
+                <div class="loading-spinner">Loading recently found items...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Latest Lost Items Section -->
+    <section class="latest-items" style="background: #f9fafb;">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div>
+                    <h2>Recently Lost Items</h2>
+                    <p style="color: var(--text-light);">Help your peers find their lost belongings. Have you seen
+                        these?</p>
+                </div>
+                <a href="browse.html?type=lost" class="view-all-btn">View All Lost Items <i
+                        class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="items-grid" id="latest-lost-grid" data-aos="fade-up" data-aos-delay="200">
+                <div class="loading-spinner">Loading recently lost items...</div>
             </div>
         </div>
     </section>

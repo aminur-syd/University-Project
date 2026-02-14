@@ -402,8 +402,17 @@ if (loginForm) {
             }
         } catch (error) {
             errorDiv.style.display = 'block';
-            errorDiv.textContent = "Error: " + error.message; // Show detailed error
             console.error(error);
+
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                errorDiv.textContent = "Incorrect email or password. Please try again.";
+            } else if (error.code === 'auth/too-many-requests') {
+                errorDiv.textContent = "Too many failed attempts. Please try again later or reset your password.";
+            } else if (error.code === 'auth/user-disabled') {
+                errorDiv.textContent = "This account has been disabled. Please contact support.";
+            } else {
+                errorDiv.textContent = "Login failed: " + error.message;
+            }
         }
     });
 }

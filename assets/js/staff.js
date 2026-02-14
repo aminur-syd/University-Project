@@ -94,15 +94,52 @@ if (pendingClaimsList) {
             const claim = docSnap.data();
             const div = document.createElement('div');
             div.className = 'post-item';
+
+            // Format timestamps or default text
+            const timeAgo = claim.createdAt ? new Date(claim.createdAt.toDate()).toLocaleDateString() : 'Just now';
+
+            // Determine Context
+            let contextBadge = '';
+            let contextText = '';
+
+            if (claim.type === 'ownership_claim') {
+                contextBadge = '<span class="item-badge badge-lost">Claiming Ownership</span>';
+                contextText = `User claims they <strong>own</strong> this found item.`;
+            } else if (claim.type === 'finder_report') {
+                contextBadge = '<span class="item-badge badge-found">Finder Report</span>';
+                contextText = `User reports they <strong>found</strong> this lost item.`;
+            } else {
+                contextBadge = '<span class="item-badge" style="background: #9ca3af;">General Claim</span>';
+                contextText = `General claim or report.`;
+            }
+
             div.innerHTML = `
                 <div>
-                    <h3>Claim for Item ID: <a href="../item-details.html?id=${claim.itemId}">${claim.itemId}</a></h3>
-                    <p>Claimer: ${claim.claimerName}</p>
-                    <p>Message: ${claim.message}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <h3>${claim.itemTitle || 'Unknown Item'} <small>(${claim.itemType || 'N/A'})</small></h3>
+                        ${contextBadge}
+                    </div>
+                    
+                    <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <p style="margin-bottom: 5px;"><strong>Claimer:</strong> ${claim.claimerName} (${claim.claimerEmail})</p>
+                        <p style="margin-bottom: 5px;"><strong>Date:</strong> ${timeAgo}</p>
+                        <p><strong>Context:</strong> ${contextText}</p>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 0.95rem; margin-bottom: 5px; color: var(--text-light);">Message / Proof:</h4>
+                        <p style="font-style: italic; color: var(--text-color); background: #fff; padding: 10px; border: 1px solid #e5e7eb; border-radius: 4px;">"${claim.message}"</p>
+                    </div>
+
+                    <p style="font-size: 0.9rem;"><a href="../item-details.html?id=${claim.itemId}" target="_blank" style="color: var(--primary-color);">View Original Post <i class="fas fa-external-link-alt"></i></a></p>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary approve-claim-btn" data-id="${docSnap.id}" data-item="${claim.itemId}">Approve</button>
-                    <button class="btn btn-danger reject-claim-btn" style="background: var(--danger); color: white;" data-id="${docSnap.id}">Reject</button>
+                <div style="display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+                    <button class="btn btn-primary approve-claim-btn" data-id="${docSnap.id}" data-item="${claim.itemId}" style="background: var(--success); border-color: var(--success);">
+                        <i class="fas fa-check"></i> Approve & Mark Returned
+                    </button>
+                    <button class="btn btn-danger reject-claim-btn" style="background: var(--danger); color: white;" data-id="${docSnap.id}">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
                 </div>
             `;
             pendingClaimsList.appendChild(div);
@@ -120,23 +157,31 @@ if (pendingClaimsList) {
 }
 
 async function updateClaimStatus(claimId, itemId, status) {
+    if (!confirm(`Are you sure you want to ${status} this claim? This action cannot be undone.`)) return;
+
     try {
         const claimRef = doc(db, "claims", claimId);
+
+        // 1. Update Claim Status
         await updateDoc(claimRef, {
             status: status,
             reviewedBy: auth.currentUser.uid,
             reviewedAt: serverTimestamp()
         });
 
+        // 2. If Approved, Mark Item as Resolved (Returned)
         if (status === 'approved' && itemId) {
-            // Update Item Status to Resolved
             const itemRef = doc(db, "items", itemId);
             await updateDoc(itemRef, {
-                status: 'resolved'
+                status: 'resolved',
+                resolvedByClaim: claimId,
+                resolvedAt: serverTimestamp()
             });
+            alert(`Claim approved! The item has been marked as RETURNED.`);
+        } else {
+            alert(`Claim ${status} successfully.`);
         }
 
-        alert(`Claim ${status} successfully.`);
         window.location.reload();
     } catch (error) {
         console.error("Error updating claim:", error);

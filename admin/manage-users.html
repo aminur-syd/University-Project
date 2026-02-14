@@ -162,6 +162,28 @@
         </div>
     </footer>
 
+    <div class="modal-overlay" id="role-modal">
+        <div class="modal-container">
+            <h3 class="modal-title">Change User Role</h3>
+            <p id="role-modal-user" style="margin-bottom: 20px; color: var(--text-light);"></p>
+            <form id="role-form">
+                <input type="hidden" id="role-user-id">
+                <div class="form-group" style="text-align: left;">
+                    <label for="new-role">Select New Role</label>
+                    <select id="new-role" class="form-control" required>
+                        <option value="user">User</option>
+                        <option value="staff">Staff</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-outline" id="cancel-role-btn" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Update Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script type="module" src="../assets/js/firebase-config.js"></script>
     <script type="module" src="../assets/js/auth.js"></script>
     <script type="module" src="../assets/js/admin.js"></script>

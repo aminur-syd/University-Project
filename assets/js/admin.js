@@ -15,27 +15,55 @@ const totalUsers = document.getElementById('total-users');
 const totalItems = document.getElementById('total-items');
 const totalClaims = document.getElementById('total-claims');
 
-window.editUserRole = async (userId, userName, currentRole) => {
-    const newRole = prompt(`Change role for ${userName}.\nCurrent Role: ${currentRole}\nEnter new role (user / staff / admin):`, currentRole);
+// Role Management Modal
+const roleModal = document.getElementById('role-modal');
+const roleForm = document.getElementById('role-form');
+const cancelRoleBtn = document.getElementById('cancel-role-btn');
+const roleUserIdInput = document.getElementById('role-user-id');
+const roleModalUserP = document.getElementById('role-modal-user');
+const newRoleSelect = document.getElementById('new-role');
 
-    if (newRole && newRole !== currentRole) {
-        if (!['user', 'staff', 'admin'].includes(newRole.toLowerCase())) {
-            alert("Invalid role. Please enter 'user', 'staff', or 'admin'.");
-            return;
-        }
+const openRoleModal = (userId, userName, currentRole) => {
+    roleUserIdInput.value = userId;
+    roleModalUserP.textContent = `User: ${userName} (${currentRole})`;
+    newRoleSelect.value = currentRole;
+    roleModal.classList.add('active');
+};
+
+if (cancelRoleBtn) {
+    cancelRoleBtn.addEventListener('click', () => {
+        roleModal.classList.remove('active');
+    });
+}
+
+if (roleForm) {
+    roleForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = roleUserIdInput.value;
+        const newRole = newRoleSelect.value;
+        const submitBtn = roleForm.querySelector('button[type="submit"]');
+
+        if (!userId) return;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Updating...";
 
         try {
             await updateDoc(doc(db, "users", userId), {
-                role: newRole.toLowerCase()
+                role: newRole
             });
-            alert(`User ${userName} is now a ${newRole}.`);
+            alert(`User role updated to ${newRole.toUpperCase()}.`);
+            roleModal.classList.remove('active');
             window.location.reload();
         } catch (error) {
             console.error("Error updating role:", error);
             alert("Error: " + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Update Role";
         }
-    }
-};
+    });
+}
 
 // Fetch Users
 if (usersList) {
@@ -56,14 +84,22 @@ if (usersList) {
                 tr.innerHTML = `
                     <td>${user.name}</td>
                     <td>${user.email}</td>
-                    <td>${user.role}</td>
+                    <td><span class="item-badge" style="background: ${user.role === 'admin' ? 'var(--danger)' : (user.role === 'staff' ? 'var(--primary-color)' : '#9ca3af')}">${user.role.toUpperCase()}</span></td>
                     <td>${user.createdAt ? user.createdAt.toDate().toLocaleDateString() : 'N/A'}</td>
                     <td>
-                        <button onclick="editUserRole('${docSnap.id}', '${user.name}', '${user.role}')" class="btn btn-outline" style="color: blue; border: 1px solid blue; padding: 5px 10px; font-size: 0.8rem;">Edit Role</button>
+                        <button class="btn btn-outline edit-role-btn" data-id="${docSnap.id}" data-name="${user.name}" data-role="${user.role}" style="color: blue; border: 1px solid blue; padding: 5px 10px; font-size: 0.8rem;">Edit Role</button>
                     </td>
                 `;
                 usersList.appendChild(tr);
             });
+
+            // Attach Event Listeners
+            document.querySelectorAll('.edit-role-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    openRoleModal(btn.dataset.id, btn.dataset.name, btn.dataset.role);
+                });
+            });
+
         } catch (error) {
             console.error(error);
             usersList.innerHTML = '<tr><td colspan="5">Error loading users (Need permissions).</td></tr>';
@@ -84,6 +120,5 @@ if (logsContainer) {
     logsContainer.innerHTML = `
         <div class="log-entry">[INFO] System initialized at ${new Date().toLocaleString()}</div>
         <div class="log-entry">[INFO] Database connection established.</div>
-        <div class="log-entry">[WARN] Email service not configured.</div>
     `;
 }

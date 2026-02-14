@@ -135,51 +135,172 @@ if (createPostForm) {
 }
 
 // Fetch Latest Items (Home Page) or Browse Items
-if (latestItemsGrid || itemsGrid) {
-    const fetchItems = async () => {
-        const grid = latestItemsGrid || itemsGrid;
-        grid.innerHTML = '<div class="loading-spinner">Loading items...</div>';
+const latestFoundGrid = document.getElementById('latest-found-grid');
+const latestLostGrid = document.getElementById('latest-lost-grid');
+
+if (latestFoundGrid || latestLostGrid || itemsGrid) {
+    const renderItems = (items, container) => {
+        container.innerHTML = '';
+        if (items.length === 0) {
+            container.innerHTML = '<p>No items found.</p>';
+            return;
+        }
+
+        items.forEach((docSnap) => {
+            const item = docSnap.data();
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = `
+                <div class="item-image" style="background-image: url('${item.imageUrl || 'https://via.placeholder.com/300x200?text=No+Image'}');"></div>
+                <div class="item-content">
+                    <span class="item-badge ${item.type === 'lost' ? 'badge-lost' : 'badge-found'}">${item.type}</span>
+                    <h3 class="item-title">${item.title}</h3>
+                    <p class="item-location"><i class="fas fa-map-marker-alt"></i> ${item.location}</p>
+                    <p class="item-date"><i class="far fa-calendar-alt"></i> ${item.date}</p>
+                    <a href="item-details.html?id=${docSnap.id}" class="btn btn-outline" style="color: var(--primary-color); border-color: var(--primary-color); margin-top: 10px; width: 100%; text-align: center;">View Details</a>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    };
+
+    const fetchHomePageItems = async () => {
+        try {
+            // Fetch Latest Found Items
+            if (latestFoundGrid) {
+                latestFoundGrid.innerHTML = '<div class="loading-spinner">Loading recently found items...</div>';
+                const qFound = query(
+                    collection(db, "items"),
+                    where("type", "==", "found"),
+                    where("reviewStatus", "==", "approved"),
+                    where("status", "==", "active"),
+                    orderBy("createdAt", "desc"),
+                    limit(4)
+                );
+                const snapFound = await getDocs(qFound);
+                renderItems(snapFound.docs, latestFoundGrid);
+            }
+
+            // Fetch Latest Lost Items
+            if (latestLostGrid) {
+                latestLostGrid.innerHTML = '<div class="loading-spinner">Loading recently lost items...</div>';
+                const qLost = query(
+                    collection(db, "items"),
+                    where("type", "==", "lost"),
+                    where("reviewStatus", "==", "approved"),
+                    where("status", "==", "active"),
+                    orderBy("createdAt", "desc"),
+                    limit(4)
+                );
+                const snapLost = await getDocs(qLost);
+                renderItems(snapLost.docs, latestLostGrid);
+            }
+
+        } catch (error) {
+            console.error("Error fetching homepage items:", error);
+            if (latestFoundGrid) latestFoundGrid.innerHTML = '<p>Error loading items.</p>';
+            if (latestLostGrid) latestLostGrid.innerHTML = '<p>Error loading items.</p>';
+        }
+    };
+
+    // Browse Page Logic (Separate Function)
+    const fetchBrowseItems = async () => {
+        if (!itemsGrid) return;
+
+        const filterForm = document.getElementById('filter-form');
+        const searchInput = document.getElementById('search');
+        const typeSelect = document.getElementById('type');
+        const categorySelect = document.getElementById('category');
+
+        itemsGrid.innerHTML = '<div class="loading-spinner">Loading items...</div>';
 
         try {
+            // 1. Get Filters from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const typeFilter = urlParams.get('type') || 'all';
+            const categoryFilter = urlParams.get('category') || 'all';
+            const searchFilter = urlParams.get('search') || '';
+
+            // 2. Set Form Values (Sync UI with URL)
+            if (typeSelect) typeSelect.value = typeFilter;
+            if (categorySelect) categorySelect.value = categoryFilter;
+            if (searchInput) searchInput.value = searchFilter;
+
+            // 3. Build Query
+            // Note: Firestore requires composite indexes for multiple 'where' clauses.
+            // For now, we'll fetch approved items and filter in-memory for simplicity & robustness without index setup.
+            // In a production app with thousands of items, you MUST create indexes.
+
             const q = query(
                 collection(db, "items"),
                 where("reviewStatus", "==", "approved"),
                 where("status", "==", "active"),
                 orderBy("createdAt", "desc"),
-                limit(4)
+                limit(50)
             );
 
             const querySnapshot = await getDocs(q);
-            grid.innerHTML = '';
+            let items = [];
 
-            if (querySnapshot.empty) {
-                grid.innerHTML = '<p>No items found.</p>';
-                return;
+            querySnapshot.forEach(doc => {
+                items.push({ id: doc.id, ...doc.data() });
+            });
+
+            // 4. Apply Filters In-Memory
+            if (typeFilter !== 'all') {
+                items = items.filter(item => item.type === typeFilter);
+            }
+            if (categoryFilter !== 'all') {
+                items = items.filter(item => item.category === categoryFilter);
+            }
+            if (searchFilter) {
+                const lowerSearch = searchFilter.toLowerCase();
+                items = items.filter(item =>
+                    item.title.toLowerCase().includes(lowerSearch) ||
+                    (item.description && item.description.toLowerCase().includes(lowerSearch)) ||
+                    (item.location && item.location.toLowerCase().includes(lowerSearch))
+                );
             }
 
-            querySnapshot.forEach((doc) => {
-                const item = doc.data();
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <div class="item-image" style="background-image: url('${item.imageUrl || 'https://via.placeholder.com/300x200?text=No+Image'}');"></div>
-                    <div class="item-content">
-                        <span class="item-badge ${item.type === 'lost' ? 'badge-lost' : 'badge-found'}">${item.type}</span>
-                        <h3 class="item-title">${item.title}</h3>
-                        <p class="item-location"><i class="fas fa-map-marker-alt"></i> ${item.location}</p>
-                        <p class="item-date"><i class="far fa-calendar-alt"></i> ${item.date}</p>
-                        <a href="item-details.html?id=${doc.id}" class="btn btn-outline" style="color: var(--primary-color); border-color: var(--primary-color); margin-top: 10px; width: 100%; text-align: center;">View Details</a>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+            // Mock DocSnap structure for renderItems
+            const mockDocSnaps = items.map(item => ({
+                id: item.id,
+                data: () => item
+            }));
+            renderItems(mockDocSnaps, itemsGrid);
+
         } catch (error) {
-            console.error(error);
-            grid.innerHTML = '<p>Error loading items.</p>';
+            console.error("Error fetching browse items:", error);
+            itemsGrid.innerHTML = '<p>Error loading items.</p>';
+        }
+
+        // 5. Handle Filter Form Submit (Update URL)
+        if (filterForm) {
+            // Remove existing listener if any (cleaner way is difficult without named function, but for this simpler app it's fine)
+            // Just attach new one. The browser reloads anyway.
+            filterForm.onsubmit = (e) => {
+                e.preventDefault();
+                const newType = typeSelect.value;
+                const newCategory = categorySelect.value;
+                const newSearch = searchInput.value;
+
+                const newUrl = new URL(window.location);
+                if (newType !== 'all') newUrl.searchParams.set('type', newType); else newUrl.searchParams.delete('type');
+                if (newCategory !== 'all') newUrl.searchParams.set('category', newCategory); else newUrl.searchParams.delete('category');
+                if (newSearch) newUrl.searchParams.set('search', newSearch); else newUrl.searchParams.delete('search');
+
+                window.location.href = newUrl.toString();
+            };
         }
     };
 
-    fetchItems();
+    if (latestFoundGrid || latestLostGrid) {
+        fetchHomePageItems();
+    }
+
+    if (itemsGrid) {
+        fetchBrowseItems();
+    }
 
     // Fetch Homepage Stats
     const fetchHomeStats = async () => {
@@ -281,10 +402,35 @@ if (myPostsList) {
                             <h3>${item.title} (${item.type})</h3>
                             <p>${item.date} - ${item.location}</p>
                             <span style="color: ${statusColor}; font-weight: bold; font-size: 0.9rem;">Status: ${item.reviewStatus}</span>
+                            ${item.status === 'resolved' ? '<span class="item-badge" style="background: var(--success); margin-left: 10px;">RETURNED</span>' : ''}
                         </div>
-                        <a href="../item-details.html?id=${doc.id}" class="btn btn-secondary">View</a>
+                        <div style="display: flex; gap: 10px;">
+                            ${item.status !== 'resolved' && item.reviewStatus === 'approved' ? `<button class="btn btn-outline mark-resolved-btn" data-id="${doc.id}" style="color: var(--success); border-color: var(--success);">Mark as Returned</button>` : ''}
+                            <a href="../item-details.html?id=${doc.id}" class="btn btn-secondary">View</a>
+                        </div>
                     `;
                     myPostsList.appendChild(div);
+                });
+
+                document.querySelectorAll('.mark-resolved-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        if (confirm("Did you find this item/return it to its owner? This will mark it as returned on the site.")) {
+                            try {
+                                const itemRef = doc(db, "items", btn.dataset.id);
+                                await updateDoc(itemRef, {
+                                    status: 'resolved',
+                                    resolvedBy: 'owner', // Self-resolution
+                                    resolvedAt: serverTimestamp()
+                                });
+                                alert("Item marked as returned!");
+                                window.location.reload();
+                            } catch (error) {
+                                console.error("Error updating status:", error);
+                                alert("Error: " + error.message);
+                            }
+                        }
+                    });
                 });
             } catch (error) {
                 console.error(error);
@@ -303,8 +449,11 @@ if (itemDetailContainer) {
         getDoc(doc(db, "items", itemId)).then((docSnap) => {
             if (docSnap.exists()) {
                 const item = docSnap.data();
+                const claimType = item.type === 'found' ? 'ownership_claim' : 'finder_report';
+                const buttonText = item.type === 'found' ? 'Claim This Item' : 'I Found This!';
+
                 itemDetailContainer.innerHTML = `
-                    <div style="display: flex; gap: 40px; flex-wrap: wrap;">
+                    < div style = "display: flex; gap: 40px; flex-wrap: wrap;" >
                          <div style="flex: 1; min-width: 300px;">
                             <img src="${item.imageUrl || 'https://via.placeholder.com/600x400?text=No+Image'}" style="width: 100%; border-radius: 8px;">
                         </div>
@@ -319,21 +468,21 @@ if (itemDetailContainer) {
                                 <p><strong>Date:</strong> ${item.date}</p>
                             </div>
 
-                            ${item.type === 'found' ? `<button id="claim-btn" class="btn btn-primary">Claim This Item</button>` : `<button class="btn btn-primary" onclick="alert('Please contact the finder if you have information.')">I Found This!</button>`}
+                            <button id="claim-btn" class="btn btn-primary">${buttonText}</button>
                             
                             <div id="claim-form-container" style="display: none; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-                                <h3>Submit a Claim</h3>
+                                <h3>${item.type === 'found' ? 'Submit a Claim' : 'Report Finding This Item'}</h3>
                                 <form id="claim-form">
                                     <div class="form-group">
                                         <label>Message / Proof Description</label>
-                                        <textarea id="claim-message" class="form-control" rows="3" required></textarea>
+                                        <textarea id="claim-message" class="form-control" rows="3" required placeholder="${item.type === 'found' ? 'Describe the item in detail to prove ownership...' : 'Describe where and when you found it...'}"></textarea>
                                     </div>
-                                    <button type="submit" class="btn btn-primary">Submit Claim</button>
+                                    <button type="submit" class="btn btn-primary">Submit</button>
                                 </form>
                             </div>
                         </div>
-                    </div>
-                `;
+                    </div >
+                    `;
 
                 // Handle Claim Button
                 const claimBtn = document.getElementById('claim-btn');
@@ -343,12 +492,67 @@ if (itemDetailContainer) {
                             window.location.href = "login.html";
                             return;
                         }
+                        // Prevent users from claiming their own items
+                        if (auth.currentUser.uid === item.createdBy) {
+                            alert("You cannot claim your own item.");
+                            return;
+                        }
                         document.getElementById('claim-form-container').style.display = 'block';
                     });
                 }
 
-                // Handle Claim Form Submission (will be moved to claims.js or handled here)
-                // For simplicity, I'll dispatch a custom event or let claims.js handle it if it's imported
+                // Handle Claim Form Submission
+                const claimForm = document.getElementById('claim-form');
+                if (claimForm) {
+                    claimForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const message = document.getElementById('claim-message').value;
+                        const submitButton = claimForm.querySelector('button');
+
+                        submitButton.disabled = true;
+                        submitButton.textContent = "Submitting...";
+
+                        try {
+                            // Check if already claimed by this user
+                            const qCheck = query(
+                                collection(db, "claims"),
+                                where("itemId", "==", itemId),
+                                where("claimerUid", "==", auth.currentUser.uid)
+                            );
+                            const checkSnap = await getDocs(qCheck);
+
+                            if (!checkSnap.empty) {
+                                alert("You have already submitted a claim for this item.");
+                                submitButton.disabled = false;
+                                submitButton.textContent = "Submit";
+                                return;
+                            }
+
+                            await addDoc(collection(db, "claims"), {
+                                itemId: itemId,
+                                itemTitle: item.title,
+                                itemType: item.type, // 'lost' or 'found'
+                                type: claimType, // 'ownership_claim' or 'finder_report'
+                                claimerUid: auth.currentUser.uid,
+                                claimerName: auth.currentUser.displayName || "Anonymous",
+                                claimerEmail: auth.currentUser.email,
+                                message: message,
+                                status: "pending",
+                                createdAt: serverTimestamp()
+                            });
+
+                            alert("Report submitted successfully! The admin will review it.");
+                            document.getElementById('claim-form-container').style.display = 'none';
+                            claimForm.reset();
+                        } catch (error) {
+                            console.error("Error submitting claim:", error);
+                            alert("Error: " + error.message);
+                        } finally {
+                            submitButton.disabled = false;
+                            submitButton.textContent = "Submit";
+                        }
+                    });
+                }
             } else {
                 itemDetailContainer.innerHTML = '<p>Item not found.</p>';
             }
