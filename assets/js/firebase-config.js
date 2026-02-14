@@ -7,7 +7,7 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-s
 // Your web app's Firebase configuration
 // TODO: Replace with your actual Firebase project configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyDWt4CTYOxfgx3K72c4pfeFm7q6rzLClZg",
+    apiKey: "AIzaSyDWt4CTYOxfgx3K72c4pfeFm7q6rzLC1Zg",
     authDomain: "lost-and-found-16023.firebaseapp.com",
     projectId: "lost-and-found-16023",
     storageBucket: "lost-and-found-16023.firebasestorage.app",
