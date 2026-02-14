@@ -18,10 +18,9 @@ const statsClaims = document.getElementById('pending-claims');
 // Fetch Found Items (For Staff/Admin Only)
 if (pendingPostsList) {
     const fetchFoundItemsList = async () => {
-        // Fetch all FOUND items, ordered by date
+        // Fetch ALL items (Lost & Found), ordered by date
         const q = query(
             collection(db, "items"),
-            where("type", "==", "found"),
             where("status", "==", "active"), // Only active ones
             orderBy("createdAt", "desc")
         );
@@ -31,7 +30,7 @@ if (pendingPostsList) {
 
             pendingPostsList.innerHTML = '';
             if (querySnapshot.empty) {
-                pendingPostsList.innerHTML = '<p>No found items reported yet.</p>';
+                pendingPostsList.innerHTML = '<p>No items reported yet.</p>';
                 return;
             }
 
@@ -39,12 +38,18 @@ if (pendingPostsList) {
                 const item = docSnap.data();
                 const div = document.createElement('div');
                 div.className = 'post-item';
+
+                const badgeClass = item.type === 'lost' ? 'badge-lost' : 'badge-found';
+
                 div.innerHTML = `
                     <div style="display: flex; gap: 15px; align-items: start;">
                         <img src="${item.imageUrl || 'https://via.placeholder.com/150'}" alt="Item Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
                         <div>
-                            <h3>${item.title}</h3>
-                            <p><strong>Found by:</strong> ${item.creatorName}</p>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                <h3 style="margin: 0;">${item.title}</h3>
+                                <span class="item-badge ${badgeClass}">${item.type.toUpperCase()}</span>
+                            </div>
+                            <p><strong>Posted by:</strong> ${item.creatorName}</p>
                             <p>${item.description}</p>
                             <p><small>${item.date} | ${item.location}</small></p>
                             <a href="../item-details.html?id=${docSnap.id}" target="_blank" style="color: var(--primary-color);">View Details <i class="fas fa-external-link-alt"></i></a>
@@ -62,7 +67,7 @@ if (pendingPostsList) {
                 btn.addEventListener('click', () => deletePost(btn.dataset.id));
             });
         } catch (error) {
-            console.error("Error fetching found items:", error);
+            console.error("Error fetching items:", error);
             pendingPostsList.innerHTML = '<p>Error loading items.</p>';
         }
     };
@@ -141,8 +146,15 @@ if (pendingClaimsList) {
                         <p style="font-style: italic; color: var(--text-color); background: #fff; padding: 10px; border: 1px solid #e5e7eb; border-radius: 4px;">"${claim.message}"</p>
                     </div>
 
-                    <p style="font-size: 0.9rem;"><a href="../item-details.html?id=${claim.itemId}" target="_blank" style="color: var(--primary-color);">View Original Post <i class="fas fa-external-link-alt"></i></a></p>
-                </div>
+                        <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 10px;"><strong>Token:</strong> <span style="font-family: monospace; background: #e5e7eb; padding: 2px 5px; border-radius: 4px;">${claim.claimToken || 'N/A'}</span></p>
+                        <p style="font-size: 0.9rem;"><a href="../item-details.html?id=${claim.itemId}" target="_blank" style="color: var(--primary-color);">View Original Post <i class="fas fa-external-link-alt"></i></a></p>
+                        
+                        <div style="margin-top: 10px;">
+                             <button class="btn btn-outline send-email-btn" data-email="${claim.claimerEmail}" data-name="${claim.claimerName}" data-item="${claim.itemTitle}" data-token="${claim.claimToken || 'N/A'}" style="font-size: 0.8rem; padding: 5px 10px;">
+                                <i class="fas fa-envelope"></i> Send Email
+                            </button>
+                        </div>
+                    </div>
                 <div style="display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
                     <button class="btn btn-primary approve-claim-btn" data-id="${docSnap.id}" data-item="${claim.itemId}" style="background: var(--success); border-color: var(--success);">
                         <i class="fas fa-check"></i> Approve & Mark Returned
@@ -160,6 +172,48 @@ if (pendingClaimsList) {
         });
         document.querySelectorAll('.reject-claim-btn').forEach(btn => {
             btn.addEventListener('click', () => updateClaimStatus(btn.dataset.id, null, 'rejected'));
+        });
+
+        // EmailJS Event Listeners
+        document.querySelectorAll('.send-email-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const email = btn.dataset.email;
+                const name = btn.dataset.name;
+                const itemTitle = btn.dataset.item;
+                const token = btn.dataset.token;
+
+                // SERVICE ID and TEMPLATE ID
+                const serviceID = "YOUR_SERVICE_ID";
+                const templateID = "YOUR_TEMPLATE_ID";
+
+                if (serviceID === "YOUR_SERVICE_ID") {
+                    alert("Please configure EmailJS Service ID and Template ID in assets/js/staff.js");
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+                const templateParams = {
+                    to_email: email,
+                    to_name: name,
+                    item_name: itemTitle,
+                    claim_token: token,
+                    message: `We received your claim for: ${itemTitle}. Your Token is: ${token}. Please reply with details.`
+                };
+
+                emailjs.send(serviceID, templateID, templateParams)
+                    .then(() => {
+                        alert("Email sent successfully!");
+                        btn.innerHTML = '<i class="fas fa-check"></i> Sent';
+                    })
+                    .catch((err) => {
+                        console.error("EmailJS Error:", err);
+                        alert("Failed to send email. Check console for details.");
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-envelope"></i> Send Email';
+                    });
+            });
         });
     };
 

@@ -516,11 +516,15 @@ if (itemDetailContainer) {
                                 return;
                             }
 
+                            // Generate Token
+                            const claimToken = 'CLM-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+
                             await addDoc(collection(db, "claims"), {
                                 itemId: itemId,
                                 itemTitle: item.title,
                                 itemType: item.type, // 'lost' or 'found'
                                 type: claimType, // 'ownership_claim' or 'finder_report'
+                                claimToken: claimToken,
                                 claimerUid: auth.currentUser.uid,
                                 claimerName: auth.currentUser.displayName || "Anonymous",
                                 claimerEmail: auth.currentUser.email,
@@ -529,7 +533,7 @@ if (itemDetailContainer) {
                                 createdAt: serverTimestamp()
                             });
 
-                            alert("Report submitted successfully! The admin will review it.");
+                            alert(`Report submitted successfully! \n\nYour Claim Token is: ${claimToken}\n\nPlease save this token for your reference. The admin will review it.`);
                             document.getElementById('claim-form-container').style.display = 'none';
                             claimForm.reset();
                         } catch (error) {
