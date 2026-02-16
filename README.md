@@ -15,8 +15,11 @@ A modern, responsive web application designed to help university students, staff
 ### 📱 User Interface & Experience
 - **Responsive Design**: optimized for both desktop and mobile devices.
 - **Modern Aesthetics**: Clean UI with Google Fonts (Inter), Font Awesome icons, and smooth transitions.
+- **Immersive Hero Section**: Parallax scrolling effect with a high-resolution university campus background.
+- **Sticky Reveal Footer**: Modern footer reveal animation for a layered depth effect.
 - **Dynamic Content**: Real-time updates for lost and found items using Firestore.
-- **Team Section**: 'Our Team' section featuring member profiles with professional styling and social links.
+- **Team Section**: 'Our Team' section featuring member profiles with professional styling and customized social links.
+- **Community Driven**: Dedicated section highlighting community involvement with custom imagery.
 - **Admin Enhancements**: Improved navigation context and dedicated review pages for administrators.
 
 ## 🛠️ Tech Stack
