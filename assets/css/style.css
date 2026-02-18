@@ -916,7 +916,7 @@ footer {
 }
 
 /* --- Sticky Reveal Footer & Main Wrapper --- */
-.main-wrapper {
+.enable-sticky-footer .main-wrapper {
     position: relative;
     z-index: 2;
     background-color: var(--bg-color);
@@ -925,7 +925,7 @@ footer {
     /* Margin bottom handled by JS */
 }
 
-footer {
+.enable-sticky-footer footer {
     position: fixed;
     bottom: 0;
     left: 0;
