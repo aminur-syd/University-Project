@@ -147,9 +147,17 @@ h6 {
     box-shadow: 0 4px 14px rgba(67, 97, 238, 0.4);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(67, 97, 238, 0.6);
+}
+
+.btn-primary:disabled {
+    background: #e5e7eb;
+    color: #9ca3af;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .btn-secondary {
