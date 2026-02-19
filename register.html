@@ -104,7 +104,17 @@
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" class="form-control" required>
+                    <div class="password-input-group is-hidden">
+                        <input type="password" id="password" class="form-control" required>
+                        <button type="button" class="password-toggle-btn" id="toggle-password"
+                            aria-label="Show password">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path class="eye-sclera" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle class="eye-iris" cx="12" cy="12" r="3" />
+                                <path class="eye-slash" d="M3 3l18 18" />
+                            </svg>
+                        </button>
+                    </div>
                     <ul class="password-requirements" id="password-requirements">
                         <li id="req-length"><i class="fas fa-circle"></i> At least 6 characters</li>
                         <li id="req-capital"><i class="fas fa-circle"></i> One capital letter</li>

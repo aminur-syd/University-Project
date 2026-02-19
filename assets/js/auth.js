@@ -501,3 +501,29 @@ onAuthStateChanged(auth, async (user) => {
         }
     }
 });
+
+// Password visibility toggle
+const togglePasswordBtn = document.getElementById('toggle-password');
+const passwordField = document.getElementById('password');
+
+if (togglePasswordBtn && passwordField) {
+    togglePasswordBtn.addEventListener('click', function () {
+        const isPassword = passwordField.getAttribute('type') === 'password';
+        const newType = isPassword ? 'text' : 'password';
+        passwordField.setAttribute('type', newType);
+
+        // Toggle the class on the wrapper to trigger the SVG animation
+        const wrapper = this.closest('.password-input-group');
+        if (wrapper) {
+            if (isPassword) {
+                // Switching to text: remove the hidden state (shows open eye)
+                wrapper.classList.remove('is-hidden');
+                this.setAttribute('aria-label', 'Hide password');
+            } else {
+                // Switching to password: add hidden state (draws slash, closes eye)
+                wrapper.classList.add('is-hidden');
+                this.setAttribute('aria-label', 'Show password');
+            }
+        }
+    });
+}

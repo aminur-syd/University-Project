@@ -667,6 +667,90 @@ footer {
     }
 }
 
+/* Animated Password Toggle Styles */
+.password-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-group .form-control {
+    padding-right: 50px;
+}
+
+/* Base toggle button */
+.password-toggle-btn {
+    position: absolute;
+    right: 10px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+    padding: 0;
+    outline: none;
+}
+
+.password-toggle-btn:hover {
+    background-color: rgba(67, 97, 238, 0.1);
+}
+
+.password-toggle-btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--primary-color);
+}
+
+/* The SVG inside the button */
+.password-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: #6b7280;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    transition: stroke 0.3s ease;
+}
+
+.password-toggle-btn:hover svg {
+    stroke: var(--primary-color);
+}
+
+/* Anatomy of the eye SVG */
+.eye-sclera {
+    transition: d 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.eye-iris {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    transform-origin: center;
+}
+
+.eye-slash {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    transition: stroke-dashoffset 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* State: Password Hidden (Slash is drawn, iris shrinks/fades, sclera flattens slightly) */
+.password-input-group.is-hidden .eye-slash {
+    stroke-dashoffset: 0;
+}
+
+.password-input-group.is-hidden .eye-iris {
+    transform: scale(0.3);
+    opacity: 0;
+}
+
+.password-input-group.is-hidden .eye-sclera {
+    /* Flatten the eye shape slightly to look like a closed lid */
+    d: path('M 2 12 C 2 12 7 14 12 14 C 17 14 22 12 22 12 C 22 12 17 10 12 10 C 7 10 2 12 2 12 Z');
+}
+
 /* Validation Styles */
 .form-control.error {
     border-color: var(--danger);
