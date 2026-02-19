@@ -9,7 +9,8 @@ import {
     signInWithPopup,
     RecaptchaVerifier,
     signInWithPhoneNumber,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    sendEmailVerification
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     doc,
@@ -356,7 +357,26 @@ if (registerForm) {
                 createdAt: new Date()
             }, { merge: true });
 
-            window.location.href = "user/dashboard.html";
+            // Send Email Verification
+            await sendEmailVerification(user);
+
+            // Hide form and show success message
+            registerForm.style.display = 'none';
+            if (document.querySelector('.auth-header p')) {
+                document.querySelector('.auth-header p').textContent = "Verification Required";
+            }
+
+            const successDiv = document.createElement('div');
+            successDiv.style.textAlign = 'center';
+            successDiv.style.padding = '20px';
+            successDiv.innerHTML = `
+                <i class="fas fa-envelope-open-text" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 20px;"></i>
+                <h3 style="margin-bottom: 10px;">Check your email!</h3>
+                <p style="color: var(--text-light); margin-bottom: 20px;">We've sent a verification link to <strong>${email}</strong>. Please click the link to activate your account before logging in.</p>
+                <a href="login.html" class="btn btn-primary" style="display: inline-block; width: 100%;">Go to Login</a>
+            `;
+            registerForm.parentNode.insertBefore(successDiv, registerForm.nextSibling);
+
         } catch (error) {
             errorDiv.style.display = 'block';
             if (error.code === 'auth/email-already-in-use') {
@@ -381,6 +401,36 @@ if (loginForm) {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
+
+            // Check if email is verified
+            if (!user.emailVerified) {
+                await signOut(auth); // Force logout
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = `Please verify your email address before logging in. <br> <button id="resend-verification" style="background:none; border:none; color:var(--primary-color); text-decoration:underline; cursor:pointer; padding:0; margin-top:5px;">Resend Verification Link</button>`;
+
+                // Add event listener for resend
+                setTimeout(() => {
+                    const resendBtn = document.getElementById('resend-verification');
+                    if (resendBtn) {
+                        resendBtn.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            resendBtn.disabled = true;
+                            resendBtn.textContent = "Sending...";
+                            try {
+                                // We need to temporarily sign them in to send the email, then sign out again
+                                const tempCred = await signInWithEmailAndPassword(auth, email, password);
+                                await sendEmailVerification(tempCred.user);
+                                await signOut(auth);
+                                errorDiv.innerHTML = "Verification link resent successfully. Check your inbox.";
+                                errorDiv.style.color = 'green';
+                            } catch (err) {
+                                errorDiv.innerHTML = "Error resending link: " + err.message;
+                            }
+                        });
+                    }
+                }, 100);
+                return;
+            }
 
             // Get User Role
             const userDoc = await getDoc(doc(db, "users", user.uid));

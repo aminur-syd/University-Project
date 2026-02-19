@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - Lost & Found</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .verify-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 74px - 200px);
+            padding: 40px 20px;
+        }
+
+        .verify-box {
+            background: white;
+            padding: 3rem 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .verify-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            animation: bounceIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .icon-success {
+            color: var(--success);
+        }
+
+        .icon-error {
+            color: var(--danger);
+        }
+
+        .icon-loading {
+            color: var(--primary-color);
+            animation: spin 2s linear infinite;
+        }
+
+        .verify-title {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .verify-message {
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            70% {
+                transform: scale(0.9);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="assets/images/logo1.png" alt="Lost & Found" class="logo-img">
+            </a>
+        </div>
+    </nav>
+
+    <div class="verify-container">
+        <div class="verify-box">
+            <div id="status-icon" class="verify-icon icon-loading">
+                <i class="fas fa-circle-notch"></i>
+            </div>
+            <h2 id="status-title" class="verify-title">Verifying your email...</h2>
+            <p id="status-message" class="verify-message">Please wait a moment while we confirm your email address.</p>
+
+            <a href="login.html" id="action-btn" class="btn btn-primary" style="display: none; width: 100%;">
+                Go to Login
+            </a>
+            <a href="register.html" id="retry-btn" class="btn btn-outline-dark"
+                style="display: none; width: 100%; margin-top: 10px;">
+                Back to Registration
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-grid">
+            <div class="footer-col">
+                <h3><img src="assets/images/logo1.png" alt="Lost & Found" class="logo-img" style="height: 50px;"></h3>
+                <p>Helping the university community track lost belongings efficiently and securely.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Contact</h4>
+                <ul>
+                    <li><i class="fas fa-envelope"></i> 0323653981@student.wub.edu.bd</li>
+                    <li><i class="fas fa-phone"></i> +880 1626 534599</li>
+                    <li><i class="fas fa-map-marker-alt"></i> World university of Bangladesh</li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="assets/js/firebase-config.js"></script>
+    <script type="module">
+        import { auth } from './assets/js/firebase-config.js';
+        import { applyActionCode } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // DOM Elements
+        const statusIcon = document.getElementById('status-icon');
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const actionBtn = document.getElementById('action-btn');
+        const retryBtn = document.getElementById('retry-btn');
+
+        // Extract action code (oobCode) from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const actionCode = urlParams.get('oobCode');
+        const mode = urlParams.get('mode');
+
+        async function verifyEmail() {
+            if (!actionCode || mode !== 'verifyEmail') {
+                showError("Invalid or missing verification link. Please check your email again or request a new link.");
+                return;
+            }
+
+            try {
+                // Apply the code to verify the email
+                await applyActionCode(auth, actionCode);
+                showSuccess();
+            } catch (error) {
+                console.error("Verification failed:", error);
+
+                // Handle specific Firebase errors
+                if (error.code === 'auth/invalid-action-code') {
+                    showError("This verification link has expired or has already been used. Please log in to request a new one.");
+                } else {
+                    showError("An error occurred during verification: " + error.message);
+                }
+            }
+        }
+
+        function showSuccess() {
+            statusIcon.className = 'verify-icon icon-success';
+            statusIcon.innerHTML = '<i class="fas fa-check-circle"></i>';
+            statusTitle.textContent = "Email Verified!";
+            statusMessage.textContent = "Thank you for verifying your email address. Your account is now fully active.";
+            actionBtn.style.display = 'inline-block';
+            actionBtn.textContent = "Log In Now";
+            actionBtn.href = "login.html";
+        }
+
+        function showError(message) {
+            statusIcon.className = 'verify-icon icon-error';
+            statusIcon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+            statusTitle.textContent = "Verification Failed";
+            statusMessage.textContent = message;
+            actionBtn.style.display = 'inline-block';
+            actionBtn.className = 'btn btn-primary';
+            actionBtn.textContent = "Go to Login";
+            actionBtn.href = "login.html";
+            retryBtn.style.display = 'inline-block';
+        }
+
+        // Run the verification on load
+        verifyEmail();
+    </script>
+</body>
+
+</html>
