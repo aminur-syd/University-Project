@@ -72,8 +72,11 @@ const staffList = document.getElementById('staff-list');
 const usersList = document.getElementById('users-list');
 const totalUsersBadge = document.getElementById('total-users-badge');
 
+// Define in module scope so roleForm event listener can call it
+let fetchUsers = async () => { };
+
 if (adminList || staffList || usersList) {
-    const fetchUsers = async () => {
+    fetchUsers = async () => {
         try {
             const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
             const querySnapshot = await getDocs(q);
