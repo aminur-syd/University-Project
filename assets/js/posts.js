@@ -78,6 +78,12 @@ if (createPostForm) {
             }
 
             submitBtn.textContent = "Saving Details...";
+
+            // AUTOMATIC APPROVAL LOGIC
+            // Lost items are instantly active. Found items require staff review to prevent false claims.
+            const initialReviewStatus = type === 'lost' ? "approved" : "pending";
+            // Hidden items shouldn't appear in public queries, even if active, so we rely on reviewStatus
+
             await addDoc(collection(db, "items"), {
                 type,
                 category,
@@ -88,8 +94,8 @@ if (createPostForm) {
                 imageUrl,
                 createdBy: user.uid,
                 creatorName: user.displayName,
-                reviewStatus: "approved", // Auto-approved
-                status: "active", // Auto-active
+                reviewStatus: initialReviewStatus,
+                status: "active", // Active means not resolved/deleted
                 createdAt: serverTimestamp()
             });
 
@@ -144,24 +150,51 @@ const latestFoundGrid = document.getElementById('latest-found-grid');
 const latestLostGrid = document.getElementById('latest-lost-grid');
 
 if (latestFoundGrid || latestLostGrid || itemsGrid) {
-    const renderItems = (items, container) => {
+    const renderItems = async (items, container) => {
         container.innerHTML = '';
         if (items.length === 0) {
             container.innerHTML = '<p>No items found.</p>';
             return;
         }
 
+        // Check if current user is staff/admin for visibility rules
+        let isStaff = false;
+        if (auth.currentUser) {
+            try {
+                const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+                if (userDoc.exists() && ['staff', 'admin'].includes(userDoc.data().role)) {
+                    isStaff = true;
+                }
+            } catch (e) {
+                console.error("Error checking role for render", e);
+            }
+        }
+
         items.forEach((docSnap) => {
             const item = docSnap.data();
             const card = document.createElement('div');
             card.className = 'item-card';
+
+            // OBSCURE DATA LOGIC for FOUND items if not staff
+            let displayLocation = item.location;
+            let displayDescription = item.description;
+            let displayDate = item.date;
+
+            // Strict rendering: If it's a found item, hide sensitive data from the public
+            // The item.status != 'resolved' prevents masking items that are already returned and public
+            if (item.type === 'found' && !isStaff && item.status !== 'resolved') {
+                displayLocation = "Location Hidden for Security";
+                displayDate = "Date Hidden";
+                // Optionally truncate description or hide it completely on the card
+            }
+
             card.innerHTML = `
                 <div class="item-image" style="background-image: url('${item.imageUrl || 'https://via.placeholder.com/300x200?text=No+Image'}');"></div>
                 <div class="item-content">
                     <span class="item-badge ${item.type === 'lost' ? 'badge-lost' : 'badge-found'}">${item.type}</span>
                     <h3 class="item-title">${item.title}</h3>
-                    <p class="item-location"><i class="fas fa-map-marker-alt"></i> ${item.location}</p>
-                    <p class="item-date"><i class="far fa-calendar-alt"></i> ${item.date}</p>
+                    <p class="item-location"><i class="fas fa-map-marker-alt"></i> ${displayLocation}</p>
+                    <p class="item-date"><i class="far fa-calendar-alt"></i> ${displayDate}</p>
                     <a href="item-details.html?id=${docSnap.id}" class="btn btn-outline" style="color: var(--primary-color); border-color: var(--primary-color); margin-top: 10px; width: 100%; text-align: center;">View Details</a>
                 </div>
             `;
@@ -173,23 +206,40 @@ if (latestFoundGrid || latestLostGrid || itemsGrid) {
     // Fetch Latest Items (Home Page)
     const fetchHomePageItems = async () => {
         try {
-            // Fetch Latest Lost Items ONLY
+            // Fetch Latest Lost Items (Approved is default for Lost)
             if (latestLostGrid) {
                 latestLostGrid.innerHTML = '<div class="loading-spinner">Loading recently lost items...</div>';
                 const qLost = query(
                     collection(db, "items"),
                     where("type", "==", "lost"),
                     where("status", "==", "active"),
+                    where("reviewStatus", "==", "approved"),
                     orderBy("createdAt", "desc"),
                     limit(4)
                 );
                 const snapLost = await getDocs(qLost);
-                renderItems(snapLost.docs, latestLostGrid);
+                await renderItems(snapLost.docs, latestLostGrid);
+            }
+
+            // Fetch Latest Found Items (MUST BE APPROVED)
+            if (latestFoundGrid) {
+                latestFoundGrid.innerHTML = '<div class="loading-spinner">Loading approved found items...</div>';
+                const qFound = query(
+                    collection(db, "items"),
+                    where("type", "==", "found"),
+                    where("status", "==", "active"),
+                    where("reviewStatus", "==", "approved"), // Core requirement: Only show approved found items
+                    orderBy("createdAt", "desc"),
+                    limit(4)
+                );
+                const snapFound = await getDocs(qFound);
+                await renderItems(snapFound.docs, latestFoundGrid);
             }
 
         } catch (error) {
             console.error("Error fetching homepage items:", error);
             if (latestLostGrid) latestLostGrid.innerHTML = '<p>Error loading items.</p>';
+            if (latestFoundGrid) latestFoundGrid.innerHTML = '<p>Error loading items.</p>';
         }
     };
 
@@ -256,7 +306,7 @@ if (latestFoundGrid || latestLostGrid || itemsGrid) {
                 id: item.id,
                 data: () => item
             }));
-            renderItems(mockDocSnaps, itemsGrid);
+            await renderItems(mockDocSnaps, itemsGrid);
 
         } catch (error) {
             console.error("Error fetching browse items:", error);
@@ -438,7 +488,7 @@ if (itemDetailContainer) {
             if (docSnap.exists()) {
                 const item = docSnap.data();
                 const claimType = item.type === 'found' ? 'ownership_claim' : 'finder_report';
-                const buttonText = item.type === 'found' ? 'Claim This Item' : 'I Found This!';
+                const buttonText = item.type === 'found' ? 'Claim My Product' : 'I Found This!';
 
                 itemDetailContainer.innerHTML = `
                     <div style="display: flex; gap: 40px; flex-wrap: wrap;">
@@ -457,25 +507,14 @@ if (itemDetailContainer) {
                             </div>
 
                             <button id="claim-btn" class="btn btn-primary">${buttonText}</button>
-                            
-                            <div id="claim-form-container" style="display: none; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-                                <h3>${item.type === 'found' ? 'Submit a Claim' : 'Report Finding This Item'}</h3>
-                                <form id="claim-form">
-                                    <div class="form-group">
-                                        <label>Message / Proof Description</label>
-                                        <textarea id="claim-message" class="form-control" rows="3" required placeholder="${item.type === 'found' ? 'Describe the item in detail to prove ownership...' : 'Describe where and when you found it...'}"></textarea>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Submit</button>
-                                </form>
-                            </div>
                         </div>
                     </div>
-                    `;
+                `;
 
-                // Handle Claim Button
+                // Handle Claim Button (Initiates Handover Chat)
                 const claimBtn = document.getElementById('claim-btn');
                 if (claimBtn) {
-                    claimBtn.addEventListener('click', () => {
+                    claimBtn.addEventListener('click', async () => {
                         if (!auth.currentUser) {
                             window.location.href = "login.html";
                             return;
@@ -485,63 +524,47 @@ if (itemDetailContainer) {
                             alert("You cannot claim your own item.");
                             return;
                         }
-                        document.getElementById('claim-form-container').style.display = 'block';
-                    });
-                }
 
-                // Handle Claim Form Submission
-                const claimForm = document.getElementById('claim-form');
-                if (claimForm) {
-                    claimForm.addEventListener('submit', async (e) => {
-                        e.preventDefault();
-                        const message = document.getElementById('claim-message').value;
-                        const submitButton = claimForm.querySelector('button');
-
-                        submitButton.disabled = true;
-                        submitButton.textContent = "Submitting...";
-
+                        // Initiate Chat & Email Flow
                         try {
-                            // Check if already claimed by this user
-                            const qCheck = query(
-                                collection(db, "claims"),
-                                where("itemId", "==", itemId),
-                                where("claimerUid", "==", auth.currentUser.uid)
-                            );
-                            const checkSnap = await getDocs(qCheck);
+                            claimBtn.textContent = "Initiating Secure Chat...";
+                            claimBtn.disabled = true;
 
-                            if (!checkSnap.empty) {
-                                alert("You have already submitted a claim for this item.");
-                                submitButton.disabled = false;
-                                submitButton.textContent = "Submit";
-                                return;
-                            }
-
-                            // Generate Token
-                            const claimToken = 'CLM-' + Math.random().toString(36).substr(2, 8).toUpperCase();
-
-                            await addDoc(collection(db, "claims"), {
-                                itemId: itemId,
+                            // 1. Create a new Chat Session Document
+                            const chatRef = await addDoc(collection(db, "chats"), {
+                                itemId: docSnap.id,
                                 itemTitle: item.title,
                                 itemType: item.type, // 'lost' or 'found'
-                                type: claimType, // 'ownership_claim' or 'finder_report'
-                                claimToken: claimToken,
-                                claimerUid: auth.currentUser.uid,
-                                claimerName: auth.currentUser.displayName || "Anonymous",
-                                claimerEmail: auth.currentUser.email,
-                                message: message,
-                                status: "pending",
-                                createdAt: serverTimestamp()
+                                userId: auth.currentUser.uid,
+                                userName: auth.currentUser.displayName || "Student",
+                                staffId: null, // Waits for staff response
+                                status: "active",
+                                createdAt: serverTimestamp(),
+                                updatedAt: serverTimestamp()
                             });
 
-                            alert(`Report submitted successfully! \n\nYour Claim Token is: ${claimToken}\n\nPlease save this token for your reference. The admin will review it.`);
-                            document.getElementById('claim-form-container').style.display = 'none';
-                            claimForm.reset();
+                            // 2. Write to the 'mail' collection to trigger Email Extension
+                            await addDoc(collection(db, "mail"), {
+                                to: auth.currentUser.email,
+                                message: {
+                                    subject: "Claim Registered: " + item.title,
+                                    html: "<div style='font-family: Arial, sans-serif;'>" +
+                                        "<h2>Claim Initiated</h2>" +
+                                        "<p>Hello " + (auth.currentUser.displayName || "Student") + ",</p>" +
+                                        "<p>You have initiated a claim for <b>" + item.title + "</b>.</p>" +
+                                        "<p>A university staff member will connect with you shortly to verify your ownership/finding. Please log in to your dashboard to check your Active Chats.</p>" +
+                                        "<br><p>Thank you,<br>Lost & Found Security Team</p></div>"
+                                }
+                            });
+
+                            // 3. Redirect the UI instantly into the newly created Chat interface
+                            window.location.href = "user/chat.html?chatId=" + chatRef.id;
+
                         } catch (error) {
-                            console.error("Error submitting claim:", error);
-                            alert("Error: " + error.message);
-                        } finally {
-                            submitButton.disabled = false;
-                            submitButton.textContent = "Submit";
+                            console.error("Error initiating handover process:", error);
+                            alert("Failed to initiate claim. Please try again.");
+                            claimBtn.textContent = buttonText;
+                            claimBtn.disabled = false;
                         }
                     });
                 }

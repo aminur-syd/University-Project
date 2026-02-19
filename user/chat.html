@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handover Chat - Lost & Found</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <style>
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 180px);
+            background: #ffffff;
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h3 {
+            margin: 0;
+            color: #1e293b;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #f1f5f9;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 20px;
+            position: relative;
+            line-height: 1.4;
+        }
+
+        .message-sent {
+            align-self: flex-end;
+            background: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-received {
+            align-self: flex-start;
+            background: white;
+            color: #334155;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .sys-message {
+            align-self: center;
+            background: #e2e8f0;
+            color: #475569;
+            font-size: 0.85rem;
+            padding: 5px 15px;
+            border-radius: 12px;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        .message-meta {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-top: 5px;
+            display: block;
+            text-align: right;
+        }
+
+        .message-received .message-meta {
+            text-align: left;
+            opacity: 0.5;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 15px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 25px;
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+            background-color: #f9fafb;
+        }
+
+        .chat-input-area input:focus {
+            border-color: var(--primary-color);
+            background-color: #ffffff;
+        }
+
+        .chat-input-area button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: transform 0.2s, background 0.3s;
+            flex-shrink: 0;
+        }
+
+        .chat-input-area button:hover {
+            transform: scale(1.05);
+            background: #314bce;
+        }
+
+        .chat-input-area button:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-closed {
+            background: #ecfdf5;
+            color: #065f46;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="logo">
+                <img src="../assets/images/logo1.png" alt="Lost & Found" class="logo-img">
+            </a>
+            <div class="nav-links">
+                <span style="font-weight: 600;">Welcome, <span id="user-name">User</span></span>
+                <button id="logout-btn" class="btn btn-outline"
+                    style="color: var(--text-color); border-color: var(--text-color);">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="create-post.html"><i class="fas fa-plus-circle"></i> Post Item</a></li>
+                <li><a href="my-posts.html"><i class="fas fa-list"></i> My Posts</a></li>
+                <li><a href="my-claims.html"><i class="fas fa-hand-holding"></i> My Claims</a></li>
+                <li><a href="../index.html"><i class="fas fa-arrow-left"></i> Back to Home</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <div>
+                        <h3 id="chat-item-title">Loading Handover Chat...</h3>
+                        <p style="margin: 5px 0 0 0; color: var(--text-light); font-size: 0.9rem;" id="chat-sub-info">
+                            Connecting to secure server...</p>
+                    </div>
+                    <span class="status-badge" id="chat-status-badge">Active</span>
+                </div>
+
+                <div class="chat-messages" id="chat-messages">
+                    <div class="sys-message">Loading messages...</div>
+                </div>
+
+                <form class="chat-input-area" id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Type a message to the staff..." required
+                        autocomplete="off">
+                    <button type="submit" id="send-btn" title="Send Message"><i class="fas fa-paper-plane"></i></button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase & Scripts -->
+    <script type="module" src="../assets/js/firebase-config.js"></script>
+    <script type="module" src="../assets/js/auth.js"></script>
+    <script type="module" src="../assets/js/chat.js"></script>
+</body>
+
+</html>

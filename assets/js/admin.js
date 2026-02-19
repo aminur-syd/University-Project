@@ -188,8 +188,8 @@ if (totalUsers) {
         if (pendingPostsEl) pendingPostsEl.textContent = tPending;
     });
 
-    // 3. Claims
-    getDocs(collection(db, "claims")).then(snap => totalClaims.textContent = snap.size);
+    // 3. Active Handover Chats
+    getDocs(query(collection(db, "chats"), where("status", "==", "active"))).then(snap => totalClaims.textContent = snap.size);
 
     // 4. Recent Pending Items (Action Needed)
     const recentPendingContainer = document.getElementById('recent-pending-items');

@@ -25,8 +25,12 @@ service cloud.firestore {
 
     // Items Collection
     match /items/{itemId} {
-      // Public can read all items for stats (or better: implement aggregation)
-      allow read: if true;
+      // 1. Anyone can read 'approved' items
+      // 2. Staff/Admins can read any item (including pending/rejected)
+      // 3. The user who created the item can read it regardless of status
+      allow read: if resource.data.reviewStatus == 'approved' 
+                  || isStaff() 
+                  || (isUser() && resource.data.createdBy == request.auth.uid);
       
       // Users can create items
       allow create: if isUser();
@@ -43,6 +47,28 @@ service cloud.firestore {
       allow create: if isUser();
       allow update: if isStaff(); // Only staff updates status
       allow delete: if isAdmin();
+    }
+
+    // Mail Collection (Firebase Email Extension)
+    match /mail/{mailId} {
+      allow create: if isUser(); // Users can trigger emails
+      allow read, update, delete: if false; // Deny all other access
+    }
+
+    // Chats Collection (Handover process)
+    match /chats/{chatId} {
+      // Users can only read/update their own chats. Staff can read/update all chats.
+      // Admin can delete chats.
+      allow create: if isUser() && request.resource.data.userId == request.auth.uid;
+      allow read, update: if isStaff() || (isUser() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+      
+      // Messages Subcollection
+      match /messages/{messageId} {
+        // Only involved parties can read/write messages
+        allow read, create: if isStaff() || (isUser() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid);
+        allow update, delete: if isAdmin();
+      }
     }
   }
 }
