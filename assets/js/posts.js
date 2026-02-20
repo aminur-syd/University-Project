@@ -26,6 +26,14 @@ const itemDetailContainer = document.getElementById('item-detail-container');
 
 // Create Post
 if (createPostForm) {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('type')) {
+        const typeSelect = document.getElementById('type');
+        if (typeSelect && (urlParams.get('type') === 'lost' || urlParams.get('type') === 'found')) {
+            typeSelect.value = urlParams.get('type');
+        }
+    }
+
     createPostForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
