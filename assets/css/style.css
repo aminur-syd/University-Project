@@ -218,7 +218,14 @@ h6 {
 /* --- Hero Section --- */
 .hero {
     position: relative;
-    background: url('../images/hero-bg.jpg') no-repeat center center/cover;
+    --hero-bg-base-y: 50%;
+    --hero-bg-shift: 0px;
+    background-image: url('../images/hero-bg.jpg');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-position: center calc(var(--hero-bg-base-y) + var(--hero-bg-shift));
+    background-size: cover;
+    background-color: #0f172a;
     background-attachment: fixed;
     height: 90vh;
     display: flex;
@@ -268,6 +275,13 @@ h6 {
     margin-left: auto;
     margin-right: auto;
     line-height: 1.6;
+}
+
+.hero-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
 }
 
 
@@ -664,14 +678,56 @@ footer {
         display: none;
     }
 
+    .hero {
+        background-attachment: scroll;
+        --hero-bg-base-y: 36%;
+        height: auto;
+        min-height: calc(100vh - 74px);
+        min-height: calc(100svh - 74px);
+        padding-top: 90px;
+        padding-bottom: 90px;
+    }
+
+    .hero-overlay {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.72), rgba(58, 12, 163, 0.58));
+    }
+
+    .hero-content {
+        max-width: 640px;
+        padding: 0 12px;
+    }
+
     .hero h1 {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
+        margin-bottom: 1rem;
+        line-height: 1.25;
+    }
+
+    .hero p {
+        font-size: 1rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .hero-buttons .btn {
+        width: min(100%, 290px);
     }
 
     .stats-grid,
     .footer-grid,
     .features-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .hero {
+        background-attachment: scroll;
     }
 }
 

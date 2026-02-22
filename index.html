@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lost & Found Management System</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=20260222">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20260222">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
+    <meta name="theme-color" content="#0f172a">
     <link rel="stylesheet" href="assets/css/style.css">
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
@@ -354,6 +358,42 @@
         window.addEventListener('resize', updateFooterHeight);
         // Also update after a short delay to ensure assets are loaded
         setTimeout(updateFooterHeight, 500);
+
+        // Safari-safe mobile parallax to mimic fixed hero background behavior.
+        (() => {
+            const hero = document.querySelector('.hero');
+            if (!hero) return;
+
+            const isCoarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (!isCoarsePointer || prefersReducedMotion) return;
+
+            let ticking = false;
+
+            const updateHeroParallax = () => {
+                ticking = false;
+
+                const rect = hero.getBoundingClientRect();
+                const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+                if (rect.bottom <= 0 || rect.top >= viewportHeight) return;
+
+                const passedWithinHero = Math.min(Math.max(-rect.top, 0), rect.height);
+                const shift = passedWithinHero * 0.85;
+                hero.style.setProperty('--hero-bg-shift', `${shift}px`);
+            };
+
+            const onScroll = () => {
+                if (ticking) return;
+                ticking = true;
+                window.requestAnimationFrame(updateHeroParallax);
+            };
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll);
+            window.addEventListener('orientationchange', onScroll);
+            onScroll();
+        })();
     </script>
 </body>
 
