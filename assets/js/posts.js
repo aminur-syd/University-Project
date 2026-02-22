@@ -560,8 +560,8 @@ if (itemDetailContainer) {
                                         "<h2>Claim Initiated</h2>" +
                                         "<p>Hello " + (auth.currentUser.displayName || "Student") + ",</p>" +
                                         "<p>You have initiated a claim for <b>" + item.title + "</b>.</p>" +
-                                        "<p>A university staff member will connect with you shortly to verify your ownership/finding. Please log in to your dashboard to check your Active Chats.</p>" +
-                                        "<br><p>Thank you,<br>Lost & Found Security Team</p></div>"
+                                        "<p>A WUB staff member will connect with you shortly to verify your ownership/finding. Please log in to your dashboard to check your Active Chats.</p>" +
+                                        "<br><p>Thank you,<br>WUB Lost & Found Security Team</p></div>"
                                 }
                             });
 

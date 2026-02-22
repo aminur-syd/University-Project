@@ -218,16 +218,9 @@ h6 {
 /* --- Hero Section --- */
 .hero {
     position: relative;
-    --hero-bg-base-y: 50%;
-    --hero-bg-shift: 0px;
-    background-image: url('../images/hero-bg.jpg');
-    background-repeat: no-repeat;
-    background-position: center center;
-    background-position: center calc(var(--hero-bg-base-y) + var(--hero-bg-shift));
-    background-size: cover;
     background-color: #0f172a;
-    background-attachment: fixed;
     height: 90vh;
+    min-height: 620px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -236,6 +229,24 @@ h6 {
     padding: 0 20px;
     margin-top: -74px;
     padding-top: 74px;
+    overflow: hidden;
+    overflow: clip;
+    isolation: isolate;
+    -webkit-clip-path: inset(0);
+    clip-path: inset(0);
+}
+
+.hero-bg-pinned {
+    position: fixed;
+    inset: 0;
+    background-image: url('../images/hero-bg.jpg');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .hero-overlay {
@@ -255,16 +266,24 @@ h6 {
     padding: 0 20px;
 }
 
-/* Logo removed from here as per plan */
-
 .hero h1 {
     font-size: 3.5rem;
     line-height: 1.2;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.6rem;
     color: white;
     font-weight: 800;
     letter-spacing: -1px;
     text-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.hero-subtitle {
+    font-size: 1.85rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.2px;
+    color: #d7defc;
+    margin: -0.25rem 0 1.35rem;
+    text-shadow: 0 3px 10px rgba(15, 23, 42, 0.25);
 }
 
 .hero p {
@@ -679,13 +698,15 @@ footer {
     }
 
     .hero {
-        background-attachment: scroll;
-        --hero-bg-base-y: 36%;
         height: auto;
         min-height: calc(100vh - 74px);
         min-height: calc(100svh - 74px);
         padding-top: 90px;
         padding-bottom: 90px;
+    }
+
+    .hero-bg-pinned {
+        background-position: center top;
     }
 
     .hero-overlay {
@@ -698,9 +719,15 @@ footer {
     }
 
     .hero h1 {
-        font-size: 2.2rem;
-        margin-bottom: 1rem;
+        font-size: 2.35rem;
+        margin-bottom: 0.45rem;
         line-height: 1.25;
+    }
+
+    .hero-subtitle {
+        font-size: 1.18rem;
+        margin-bottom: 1rem;
+        color: #cdd7ff;
     }
 
     .hero p {
@@ -722,12 +749,6 @@ footer {
     .footer-grid,
     .features-grid {
         grid-template-columns: 1fr;
-    }
-}
-
-@media (hover: none) and (pointer: coarse) {
-    .hero {
-        background-attachment: scroll;
     }
 }
 

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lost & Found Management System</title>
+    <title>Lost & Found Management System | World University of Bangladesh (WUB)</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=20260222">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20260222">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
@@ -25,7 +25,7 @@
         <nav class="navbar">
             <div class="nav-container">
                 <a href="index.html" class="logo">
-                    <img src="assets/images/logo1.png" alt="Lost & Found" class="logo-img">
+                    <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
                 </a>
                 <div class="nav-links">
                     <a href="index.html" class="active">Home</a>
@@ -48,12 +48,13 @@
 
         <!-- Hero Section -->
         <header class="hero">
+            <div class="hero-bg-pinned" aria-hidden="true"></div>
             <div class="hero-overlay"></div>
             <div class="hero-content" data-aos="fade-up">
-                <h1>Reuniting You With <br> What Matters Most</h1>
-                <p>The official, secure, and fast platform for the university community. Report lost items or claim
-                    found
-                    properties in seconds upon verification.</p>
+                <h1>Lost &amp; Found</h1>
+                <h2 class="hero-subtitle">For World University Of Bangladesh</h2>
+                <p>The secure and official Lost &amp; Found service for WUB students, faculty, and staff. Report lost
+                    items or post found property in seconds for verified handover.</p>
                 <div class="hero-buttons">
                     <a href="user/create-post.html?type=lost" class="btn btn-lg btn-primary"><i
                             class="fas fa-search-location"></i> I
@@ -89,8 +90,7 @@
                             alt="Secure Verification">
                         <h3><i class="fas fa-shield-alt" style="color: var(--primary-color);"></i> Secure Verification
                         </h3>
-                        <p style="color: var(--text-light); margin-top: 10px;">Every claim is reviewed by university
-                            staff.
+                        <p style="color: var(--text-light); margin-top: 10px;">Every claim is reviewed by WUB staff.
                             We verify evidence before releasing any item to ensure it goes to the rightful owner.</p>
                     </div>
                     <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
@@ -103,9 +103,9 @@
                     <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
                         <img src="assets/images/community.jpg" alt="Community Driven">
                         <h3><i class="fas fa-users" style="color: var(--accent-color);"></i> Community Driven</h3>
-                        <p style="color: var(--text-light); margin-top: 10px;">Built for students, by students. We
+                        <p style="color: var(--text-light); margin-top: 10px;">Built for WUB students, by students. We
                             foster a
-                            culture of honesty and responsibility across the entire campus.</p>
+                            culture of honesty and responsibility across the WUB campus.</p>
                     </div>
                 </div>
             </div>
@@ -207,8 +207,9 @@
         <!-- Call to Action -->
         <section class="cta-section">
             <div class="cta-content" data-aos="zoom-in">
-                <h2>Have you found something on campus?</h2>
-                <p>Be a hero. Report found items immediately and help someone reconnect with their valuables.</p>
+                <h2>Have you found something at WUB?</h2>
+                <p>Report found items quickly and help the World University of Bangladesh (WUB) community reconnect
+                    with their valuables.</p>
                 <a href="user/create-post.html" class="btn btn-lg btn-white">Report Now</a>
             </div>
         </section>
@@ -293,9 +294,9 @@
         <div class="container footer-grid">
             <div class="footer-col">
                 <h3>
-                    <img src="assets/images/logo1.png" alt="Lost & Found" class="logo-img" style="height: 50px;">
+                    <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img" style="height: 50px;">
                 </h3>
-                <p>Helping the university community track lost belongings efficiently and securely.</p>
+                <p>Helping the World University of Bangladesh (WUB) community track lost belongings efficiently and securely.</p>
                 <div class="social-links">
                     <a href="https://facebook.com/sydneyaminur"><i class="fab fa-facebook-f"></i></a>
                     <a href="https://x.com/sydneyaminur"><i class="fa-brands fa-x-twitter"></i></a>
@@ -318,12 +319,12 @@
                 <ul>
                     <li><i class="fas fa-envelope"></i> 0323653981@student.wub.edu.bd</li>
                     <li><i class="fas fa-phone"></i> +880 1626 534599</li>
-                    <li><i class="fas fa-map-marker-alt"></i> World university of Bangladesh</li>
+                    <li><i class="fas fa-map-marker-alt"></i> World University of Bangladesh (WUB)</li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 Lost & Found. All rights reserved.</p>
+            <p>&copy; 2026 Lost & Found - World University of Bangladesh (WUB). All rights reserved.</p>
         </div>
     </footer>
 
@@ -358,42 +359,6 @@
         window.addEventListener('resize', updateFooterHeight);
         // Also update after a short delay to ensure assets are loaded
         setTimeout(updateFooterHeight, 500);
-
-        // Safari-safe mobile parallax to mimic fixed hero background behavior.
-        (() => {
-            const hero = document.querySelector('.hero');
-            if (!hero) return;
-
-            const isCoarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            if (!isCoarsePointer || prefersReducedMotion) return;
-
-            let ticking = false;
-
-            const updateHeroParallax = () => {
-                ticking = false;
-
-                const rect = hero.getBoundingClientRect();
-                const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-
-                if (rect.bottom <= 0 || rect.top >= viewportHeight) return;
-
-                const passedWithinHero = Math.min(Math.max(-rect.top, 0), rect.height);
-                const shift = passedWithinHero * 0.85;
-                hero.style.setProperty('--hero-bg-shift', `${shift}px`);
-            };
-
-            const onScroll = () => {
-                if (ticking) return;
-                ticking = true;
-                window.requestAnimationFrame(updateHeroParallax);
-            };
-
-            window.addEventListener('scroll', onScroll, { passive: true });
-            window.addEventListener('resize', onScroll);
-            window.addEventListener('orientationchange', onScroll);
-            onScroll();
-        })();
     </script>
 </body>
 
