@@ -1,43 +1,60 @@
-# 🏫 University Lost & Found System
+# University Lost & Found System
 
-## 🌟 Project Overview
+Web-based Lost & Found platform for a university campus. Users can post lost/found items, browse listings, and submit claims. Admin and staff dashboards support moderation and review.
 
-The **University Lost & Found System** is a dedicated digital platform designed to streamline the recovery of lost items within the university campus. Our mission is to foster a community of honesty and responsibility, ensuring that every lost belonging finds its way back to its rightful owner swiftly and securely.
+## Features
 
-This system bridges the gap between students, faculty, and administration, providing a centralized hub for reporting, tracking, and reclaiming lost property. By leveraging modern web technologies, we have created an intuitive and accessible solution that prioritizes user experience and data integrity.
+- Authentication: register, login, email verification, password reset
+- Item posts: create/browse item listings with details and images
+- Claims workflow: submit and review ownership claims
+- Role-based dashboards: admin, staff, and end-user views
 
-## 🎯 Bringing Value to Campus
+## Tech Stack
 
-In a bustling university environment, personal items are frequently misplaced. Traditional methods of recovery—bulletin boards or scattered office inquiries—are often inefficient. Our platform digitizes this process, offering:
+- Frontend: HTML/CSS/JavaScript (static pages)
+- Backend services: Firebase (Authentication, Firestore, Storage)
+- Rules: Firestore and Storage security rules included
 
-*   **Transparency**: Real-time visibility of all found items.
-*   **Efficiency**: Quick reporting tools that minimize the time between loss and recovery.
-*   **Trust**: A verified environment where detailed claims and administrative oversight prevent misuse.
+## Project Structure
 
-## ✨ Key Features & User Experience
+- `index.html`, `browse.html`, `item-details.html`: public pages
+- `user/`: end-user pages (dashboard, my posts, my claims, chat)
+- `staff/`: staff review pages
+- `admin/`: admin dashboard and management pages
+- `assets/js/`: client-side logic (auth, posts, claims, chat, admin/staff)
+- `assets/css/`: styles
+- `firestore.rules`, `storage.rules`: Firebase security rules
 
-### For Students & Staff
-*   **Seamless Reporting**: An easy-to-use interface to report lost items or register found properties with image uploads and detailed descriptions.
-*   **Smart Matching**: The system helps users browse through categorized listings to find potential matches for their lost belongings.
-*   **Secure Claims**: A structured claim process that ensures items are returned only to verified owners.
+## Run Locally
 
-### For Administrators
-*   **Comprehensive Management**: Full oversight of all reported items, claims, and user activities.
-*   **Data-Driven Insights**: Access to key metrics on recovery rates and active reports to improve campus services.
+Because this is a static frontend, you can serve it with any local HTTP server.
 
-## 🚀 What to Expect
+Option A (Python):
 
-When using the University Lost & Found System, users can expect:
+```bash
+cd /var/www/mylostandfound
+python3 -m http.server 8080
+```
 
-1.  **A Modern Interface**: A responsive and aesthetically pleasing design feature-rich with parallax scrolling, sticky reveal animations, and professional typography.
-2.  **Reliability**: A robust backend powered by Firebase ensures that data is stored securely and updates are instantaneous.
-3.  **Community Engagement**: A platform built *by* students *for* students, encouraging active participation in maintaining a secure campus environment.
+Then open `http://localhost:8080/`.
 
----
+## Firebase Setup
 
-## 👥 Contributors
+1. Create a Firebase project.
+2. Enable:
+	- Authentication: Email/Password
+	- Firestore Database
+	- Storage
+3. Update your Firebase web app config in `assets/js/firebase-config.js`.
+4. Deploy rules:
+	- Firestore rules: `firestore.rules`
+	- Storage rules: `storage.rules`
 
-*   [**Sunjida Sabbir Moon**](https://github.com/sunjedam00n)
-*   [**Susmita Dhar Priya**](https://github.com/Priya-Dhar10)
+## Deployment
 
-*Connecting the campus, one item at a time.*
+This project can be deployed on Firebase Hosting or any static hosting provider. Ensure the Firebase configuration points to the correct project.
+
+## Contributors
+
+- [Sunjida Sabbir Moon](https://github.com/sunjedam00n)
+- [Susmita Dhar Priya](https://github.com/Priya-Dhar10)
