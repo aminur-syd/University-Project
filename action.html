@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Action - Lost & Found | World University of Bangladesh (WUB)</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=20260222">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20260222">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .action-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 74px - 200px);
+            padding: 40px 20px;
+        }
+
+        .action-box {
+            background: white;
+            padding: 2.5rem 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 520px;
+            text-align: center;
+        }
+
+        .status-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .status-loading {
+            color: var(--primary-color);
+            animation: spin 1.2s linear infinite;
+        }
+
+        .status-success {
+            color: var(--success);
+        }
+
+        .status-error {
+            color: var(--danger);
+        }
+
+        .status-form {
+            color: var(--primary-color);
+        }
+
+        .action-title {
+            font-size: 1.7rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-color);
+        }
+
+        .action-message {
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .action-content {
+            margin-top: 1rem;
+            text-align: left;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: var(--border-radius);
+            font-family: inherit;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .status-message {
+            font-size: 0.875rem;
+            margin-top: 0.75rem;
+            display: none;
+        }
+
+        .action-buttons {
+            margin-top: 1.25rem;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
+            </a>
+        </div>
+    </nav>
+
+    <div class="action-container">
+        <div class="action-box">
+            <div id="status-icon" class="status-icon status-loading">
+                <i class="fas fa-circle-notch"></i>
+            </div>
+            <h2 id="status-title" class="action-title">Processing your request...</h2>
+            <p id="status-message" class="action-message">Please wait while we validate this account action.</p>
+
+            <div id="action-content" class="action-content"></div>
+
+            <div class="action-buttons">
+                <a id="primary-btn" class="btn btn-primary" style="display: none;"></a>
+                <a id="secondary-btn" class="btn btn-outline-dark" style="display: none; margin-top: 10px;"></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-grid">
+            <div class="footer-col">
+                <h3><img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img" style="height: 50px;"></h3>
+                <p>Helping the World University of Bangladesh (WUB) community track lost belongings efficiently and securely.</p>
+                <div class="social-links">
+                    <a href="https://facebook.com/sydneyaminur"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://x.com/sydneyaminur"><i class="fa-brands fa-x-twitter"></i></a>
+                    <a href="https://instagram.com/aminur_syd"><i class="fab fa-instagram"></i></a>
+                    <a href="https://github.com/aminur-syd"><i class="fab fa-github"></i></a>
+                    <a href="http://linkedin.com/in/sydneyaminur"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="browse.html">Browse</a></li>
+                    <li><a href="login.html">Login</a></li>
+                    <li><a href="register.html">Register</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Contact</h4>
+                <ul>
+                    <li><i class="fas fa-envelope"></i> help@mylostandfound.tech</li>
+                    <li><i class="fas fa-phone"></i> +880 1626 534599</li>
+                    <li><i class="fas fa-map-marker-alt"></i> World University of Bangladesh (WUB)</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Lost & Found - World University of Bangladesh (WUB). All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="assets/js/action.js"></script>
+</body>
+
+</html>

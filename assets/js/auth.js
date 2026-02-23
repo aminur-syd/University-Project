@@ -136,6 +136,11 @@ if (googleBtn) {
     });
 }
 
+const actionCodeSettings = {
+    url: `${window.location.origin}/action.html`,
+    handleCodeInApp: false
+};
+
 // Forgot Password Logic
 const forgotPasswordLink = document.getElementById('forgot-password-link');
 const forgotPasswordSection = document.getElementById('forgot-password-section');
@@ -182,7 +187,7 @@ if (resetPasswordBtn) {
         resetPasswordBtn.textContent = "Sending...";
 
         try {
-            await sendPasswordResetEmail(auth, email);
+            await sendPasswordResetEmail(auth, email, actionCodeSettings);
             resetMessage.style.display = 'block';
             resetMessage.style.color = 'green';
             resetMessage.textContent = "Password reset email sent! Check your inbox.";
@@ -358,7 +363,7 @@ if (registerForm) {
             }, { merge: true });
 
             // Send Email Verification
-            await sendEmailVerification(user);
+            await sendEmailVerification(user, actionCodeSettings);
 
             // Hide form and show success message
             registerForm.style.display = 'none';
@@ -419,7 +424,7 @@ if (loginForm) {
                             try {
                                 // We need to temporarily sign them in to send the email, then sign out again
                                 const tempCred = await signInWithEmailAndPassword(auth, email, password);
-                                await sendEmailVerification(tempCred.user);
+                                await sendEmailVerification(tempCred.user, actionCodeSettings);
                                 await signOut(auth);
                                 errorDiv.innerHTML = "Verification link resent successfully. Check your inbox.";
                                 errorDiv.style.color = 'green';
