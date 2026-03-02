@@ -691,6 +691,30 @@ footer {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.cloudflare-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: #05080f;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.cloudflare-badge__text {
+    color: #95a3b8;
+    font-size: 0.96rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+.cloudflare-badge__logo {
+    color: #f38020 !important;
+    font-size: 1.05rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .nav-links {
@@ -749,6 +773,17 @@ footer {
     .footer-grid,
     .features-grid {
         grid-template-columns: 1fr;
+    }
+
+    .cloudflare-badge {
+        width: 100%;
+        max-width: 260px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .cloudflare-badge__text {
+        font-size: 0.9rem;
     }
 }
 
