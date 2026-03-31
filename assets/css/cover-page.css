@@ -230,7 +230,7 @@
     width: 210mm;
     min-height: 297mm;
     margin: 0 auto;
-    padding: 14mm 15mm 16mm;
+    padding: 12mm 15mm 16mm;
     background: #ffffff;
     color: #0f172a;
     font-family: 'Inter', sans-serif;
@@ -284,11 +284,11 @@
 .cover-paper__logo {
     display: flex;
     justify-content: center;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
 .cover-paper__logo img {
-    width: 255px;
+    width: 380px;
     height: auto;
 }
 
@@ -320,7 +320,7 @@
 }
 
 .cover-paper__header h3 {
-    margin-top: 4px;
+    margin-top: 18px;
     font-family: 'Inter', sans-serif;
     font-size: 1.14rem;
     line-height: 1.34;
