@@ -91,7 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const downloadPdf = async () => {
-        if (!window.html2pdf) {
+        const html2canvas = window.html2canvas;
+        const jsPdfConstructor = window.jspdf && window.jspdf.jsPDF;
+
+        if (!html2canvas || !jsPdfConstructor) {
             setStatus('PDF export library failed to load. Please refresh and try again.', true);
             return;
         }
@@ -111,29 +114,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 requestAnimationFrame(() => requestAnimationFrame(resolve));
             });
 
-            await window.html2pdf()
-                .set({
-                    margin: 0,
-                    filename: createFilename(),
-                    image: { type: 'jpeg', quality: 1 },
-                    html2canvas: {
-                        scale: 3,
-                        useCORS: true,
-                        backgroundColor: '#ffffff',
-                        scrollX: 0,
-                        scrollY: 0
-                    },
-                    jsPDF: {
-                        unit: 'mm',
-                        format: 'a4',
-                        orientation: 'portrait'
-                    },
-                    pagebreak: {
-                        mode: ['avoid-all', 'css', 'legacy']
-                    }
-                })
-                .from(coverPaper)
-                .save();
+            const rect = coverPaper.getBoundingClientRect();
+            const canvas = await html2canvas(coverPaper, {
+                scale: 3,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                scrollX: 0,
+                scrollY: 0,
+                width: Math.ceil(rect.width),
+                height: Math.ceil(rect.height),
+                windowWidth: Math.ceil(document.documentElement.clientWidth),
+                windowHeight: Math.ceil(document.documentElement.clientHeight)
+            });
+
+            const pdfWidth = 210;
+            const pdfHeight = 297;
+            const canvasAspectRatio = canvas.width / canvas.height;
+            const pageAspectRatio = pdfWidth / pdfHeight;
+            let renderWidth = pdfWidth;
+            let renderHeight = pdfHeight;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            if (canvasAspectRatio > pageAspectRatio) {
+                renderHeight = pdfWidth / canvasAspectRatio;
+                offsetY = (pdfHeight - renderHeight) / 2;
+            } else if (canvasAspectRatio < pageAspectRatio) {
+                renderWidth = pdfHeight * canvasAspectRatio;
+                offsetX = (pdfWidth - renderWidth) / 2;
+            }
+
+            const pdf = new jsPdfConstructor({
+                unit: 'mm',
+                format: 'a4',
+                orientation: 'portrait',
+                compress: true
+            });
+
+            pdf.addImage(
+                canvas.toDataURL('image/png'),
+                'PNG',
+                offsetX,
+                offsetY,
+                renderWidth,
+                renderHeight,
+                undefined,
+                'FAST'
+            );
+            pdf.save(createFilename());
 
             setStatus('Your PDF download has started.');
         } catch (error) {
