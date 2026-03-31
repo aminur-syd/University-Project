@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitted_to_department: 'Department of Computer Science and Engineering',
         submitted_by_name: 'Your Name',
         submitted_by_id: 'Your ID',
+        submitted_by_batch: 'Your Batch',
         submitted_by_department: 'Department of Computer Science and Engineering'
     };
 
@@ -28,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitted_to_department: document.getElementById('preview-submitted-to-department'),
         submitted_by_name: document.getElementById('preview-submitted-by-name'),
         submitted_by_id: document.getElementById('preview-submitted-by-id'),
+        submitted_by_batch: document.getElementById('preview-submitted-by-batch'),
         submitted_by_department: document.getElementById('preview-submitted-by-department')
     };
 
@@ -156,5 +158,5 @@ document.addEventListener('DOMContentLoaded', () => {
     applyPlaceholders();
     form.reset();
     updatePreview();
-    setStatus('Type your details. Empty fields keep the sample text in the preview.');
+    setStatus('');
 });

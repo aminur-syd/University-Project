@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
     <link rel="stylesheet" href="assets/css/style.css?v=20260331-01">
-    <link rel="stylesheet" href="assets/css/cover-page.css?v=20260331-10">
+    <link rel="stylesheet" href="assets/css/cover-page.css?v=20260331-11">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700;900&display=swap"
         rel="stylesheet">
@@ -56,7 +56,6 @@
                 <section class="builder-panel" aria-labelledby="builder-panel-title">
                     <div class="builder-panel__header">
                         <h2 id="builder-panel-title">Fill In Your Details</h2>
-                        <p>Leave a field empty to keep the example text in the preview until you are ready to replace it.</p>
                     </div>
 
                     <form id="cover-page-form" class="builder-form">
@@ -128,6 +127,11 @@
                                     <label for="submitted_by_id">ID No</label>
                                     <input type="text" id="submitted_by_id" name="submitted_by_id" autocomplete="off"
                                         placeholder="Your ID">
+                                </div>
+                                <div class="builder-field">
+                                    <label for="submitted_by_batch">Batch</label>
+                                    <input type="text" id="submitted_by_batch" name="submitted_by_batch" autocomplete="off"
+                                        placeholder="Your Batch">
                                 </div>
                                 <div class="builder-field">
                                     <label for="submitted_by_department">Department</label>
@@ -219,6 +223,11 @@
                                                     id="preview-submitted-by-id">Your ID</span>
                                             </div>
                                             <div class="cover-line">
+                                                <span class="cover-line__label">Batch:</span>
+                                                <span class="cover-line__value cover-section__text"
+                                                    id="preview-submitted-by-batch">Your Batch</span>
+                                            </div>
+                                            <div class="cover-line">
                                                 <span class="cover-line__label">Department:</span>
                                                 <span class="cover-line__value cover-section__text"
                                                     id="preview-submitted-by-department">Department of Computer Science and
@@ -285,7 +294,7 @@
     <script src="assets/js/public-nav.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
         referrerpolicy="no-referrer"></script>
-    <script src="assets/js/cover-page.js?v=20260331-02"></script>
+    <script src="assets/js/cover-page.js?v=20260331-04"></script>
 </body>
 
 </html>

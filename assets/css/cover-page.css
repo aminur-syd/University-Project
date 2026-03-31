@@ -330,9 +330,9 @@
 }
 
 .cover-paper__divider {
-    width: 160px;
-    height: 2px;
-    margin: 14px auto 0;
+    width: 240px;
+    height: 3px;
+    margin: 18px auto 0;
     background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.45), transparent);
 }
 
