@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const defaults = {
+    const fallbacks = {
         department: 'Department of Computer Science and Engineering',
         document_type: 'LAB REPORT / ASSIGNMENT / FORUM',
         course_title: 'Your Course Title',
@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
         submitted_to_department: 'Department of Computer Science and Engineering',
         submitted_by_name: 'Your Name',
         submitted_by_id: 'Your ID',
-        submitted_by_batch: 'Batch',
         submitted_by_department: 'Department of Computer Science and Engineering'
     };
 
@@ -29,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
         submitted_to_department: document.getElementById('preview-submitted-to-department'),
         submitted_by_name: document.getElementById('preview-submitted-by-name'),
         submitted_by_id: document.getElementById('preview-submitted-by-id'),
-        submitted_by_batch: document.getElementById('preview-submitted-by-batch'),
         submitted_by_department: document.getElementById('preview-submitted-by-department')
     };
 
@@ -37,13 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const fieldValue = (value) => value.trim() || '\u00A0';
-
-    const applyDefaults = () => {
-        Object.entries(defaults).forEach(([key, value]) => {
+    const applyPlaceholders = () => {
+        Object.entries(fallbacks).forEach(([key, value]) => {
             const field = form.elements.namedItem(key);
-            if (field) {
-                field.value = value;
+            if (field && !field.getAttribute('placeholder')) {
+                field.setAttribute('placeholder', value);
             }
         });
     };
@@ -55,8 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const field = form.elements.namedItem(key);
-            const value = field ? String(field.value) : '';
-            element.textContent = fieldValue(value);
+            const value = field ? String(field.value).trim() : '';
+            element.textContent = value || fallbacks[key] || '\u00A0';
         });
     };
 
@@ -150,14 +146,15 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('input', updatePreview);
 
     resetButton.addEventListener('click', () => {
-        applyDefaults();
+        form.reset();
         updatePreview();
-        setStatus('Default template content restored.');
+        setStatus('Fields cleared. The preview keeps the example text until you start typing.');
     });
 
     downloadButton.addEventListener('click', downloadPdf);
 
-    applyDefaults();
+    applyPlaceholders();
+    form.reset();
     updatePreview();
-    setStatus('Edit the fields and download a single-page PDF when ready.');
+    setStatus('Type your details. Empty fields keep the sample text in the preview.');
 });

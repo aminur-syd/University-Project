@@ -10,9 +10,9 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
     <link rel="stylesheet" href="assets/css/style.css?v=20260331-01">
-    <link rel="stylesheet" href="assets/css/cover-page.css?v=20260331-01">
+    <link rel="stylesheet" href="assets/css/cover-page.css?v=20260331-02">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
 </head>
 
@@ -50,21 +50,17 @@
                         <i class="fas fa-file-lines" aria-hidden="true"></i>
                         WUB Academic Template
                     </span>
-                    <h1>Create a polished cover page in minutes.</h1>
-                    <p>Fill in your academic details, review the A4 preview, and download a clean single-page PDF that
-                        matches the World University of Bangladesh cover-page format.</p>
-                </div>
-                <div class="cover-builder-stat">
-                    <strong>A4 PDF Ready</strong>
-                    <span>Direct one-click export with a live preview and editable WUB template fields.</span>
+                    <h1>Create a clean, modern academic cover page.</h1>
+                    <p>Type your details on the left, review the live A4 preview on the right, and download a sharp
+                        single-page PDF ready for submission.</p>
                 </div>
             </div>
 
             <div class="cover-builder-layout">
                 <section class="builder-panel" aria-labelledby="builder-panel-title">
                     <div class="builder-panel__header">
-                        <h2 id="builder-panel-title">Template Details</h2>
-                        <p>Adjust the academic information on the left and the final cover page updates instantly.</p>
+                        <h2 id="builder-panel-title">Fill In Your Details</h2>
+                        <p>Leave a field empty to keep the example text in the preview until you are ready to replace it.</p>
                     </div>
 
                     <form id="cover-page-form" class="builder-form">
@@ -76,19 +72,23 @@
                             <div class="builder-grid">
                                 <div class="builder-field builder-field--full">
                                     <label for="department">Department</label>
-                                    <input type="text" id="department" name="department" autocomplete="off">
+                                    <input type="text" id="department" name="department" autocomplete="off"
+                                        placeholder="Department of Computer Science and Engineering">
                                 </div>
                                 <div class="builder-field builder-field--full">
                                     <label for="document_type">Document Type</label>
-                                    <input type="text" id="document_type" name="document_type" autocomplete="off">
+                                    <input type="text" id="document_type" name="document_type" autocomplete="off"
+                                        placeholder="LAB REPORT / ASSIGNMENT / FORUM">
                                 </div>
                                 <div class="builder-field builder-field--full">
                                     <label for="course_title">Course Title</label>
-                                    <input type="text" id="course_title" name="course_title" autocomplete="off">
+                                    <input type="text" id="course_title" name="course_title" autocomplete="off"
+                                        placeholder="Your Course Title">
                                 </div>
                                 <div class="builder-field builder-field--full">
                                     <label for="course_code">Course Code</label>
-                                    <input type="text" id="course_code" name="course_code" autocomplete="off">
+                                    <input type="text" id="course_code" name="course_code" autocomplete="off"
+                                        placeholder="Your Course Code">
                                 </div>
                             </div>
                         </div>
@@ -101,17 +101,18 @@
                             <div class="builder-grid">
                                 <div class="builder-field builder-field--full">
                                     <label for="submitted_to_name">Teacher Name</label>
-                                    <input type="text" id="submitted_to_name" name="submitted_to_name" autocomplete="off">
+                                    <input type="text" id="submitted_to_name" name="submitted_to_name" autocomplete="off"
+                                        placeholder="Teacher Name">
                                 </div>
                                 <div class="builder-field builder-field--full">
                                     <label for="submitted_to_designation">Designation</label>
                                     <input type="text" id="submitted_to_designation" name="submitted_to_designation"
-                                        autocomplete="off">
+                                        autocomplete="off" placeholder="Designation">
                                 </div>
                                 <div class="builder-field builder-field--full">
                                     <label for="submitted_to_department">Department</label>
                                     <input type="text" id="submitted_to_department" name="submitted_to_department"
-                                        autocomplete="off">
+                                        autocomplete="off" placeholder="Department of Computer Science and Engineering">
                                 </div>
                             </div>
                         </div>
@@ -124,21 +125,18 @@
                             <div class="builder-grid">
                                 <div class="builder-field builder-field--full">
                                     <label for="submitted_by_name">Student Name</label>
-                                    <input type="text" id="submitted_by_name" name="submitted_by_name" autocomplete="off">
+                                    <input type="text" id="submitted_by_name" name="submitted_by_name" autocomplete="off"
+                                        placeholder="Your Name">
                                 </div>
                                 <div class="builder-field">
                                     <label for="submitted_by_id">ID No</label>
-                                    <input type="text" id="submitted_by_id" name="submitted_by_id" autocomplete="off">
+                                    <input type="text" id="submitted_by_id" name="submitted_by_id" autocomplete="off"
+                                        placeholder="Your ID">
                                 </div>
                                 <div class="builder-field">
-                                    <label for="submitted_by_batch">Batch</label>
-                                    <input type="text" id="submitted_by_batch" name="submitted_by_batch"
-                                        autocomplete="off">
-                                </div>
-                                <div class="builder-field builder-field--full">
                                     <label for="submitted_by_department">Department</label>
                                     <input type="text" id="submitted_by_department" name="submitted_by_department"
-                                        autocomplete="off">
+                                        autocomplete="off" placeholder="Department of Computer Science and Engineering">
                                 </div>
                             </div>
                         </div>
@@ -229,11 +227,6 @@
                                                     id="preview-submitted-by-id">Your ID</span>
                                             </div>
                                             <div class="cover-line">
-                                                <span class="cover-line__label">Batch:</span>
-                                                <span class="cover-line__value cover-section__text"
-                                                    id="preview-submitted-by-batch">Batch</span>
-                                            </div>
-                                            <div class="cover-line">
                                                 <span class="cover-line__label">Department:</span>
                                                 <span class="cover-line__value cover-section__text"
                                                     id="preview-submitted-by-department">Department of Computer Science and
@@ -243,10 +236,6 @@
                                         </div>
                                     </div>
                                 </section>
-
-                                <div class="cover-paper__footer">
-                                    <span class="cover-paper__footer-note">Prepared with the WUB cover-page builder</span>
-                                </div>
                             </div>
                         </article>
                     </div>
@@ -304,7 +293,7 @@
     <script src="assets/js/public-nav.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
         referrerpolicy="no-referrer"></script>
-    <script src="assets/js/cover-page.js"></script>
+    <script src="assets/js/cover-page.js?v=20260331-02"></script>
 </body>
 
 </html>
