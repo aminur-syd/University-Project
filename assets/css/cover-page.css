@@ -336,7 +336,7 @@ body.is-exporting .cover-paper {
 .cover-paper__divider {
     width: 240px;
     height: 3px;
-    margin: 24px auto 0;
+    margin: 12px auto 0;
     background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.45), transparent);
 }
 

@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitted_by_name: 'Your Name',
         submitted_by_id: 'Your ID',
         submitted_by_batch: 'Your Batch',
-        submitted_by_department: 'Department of Computer Science and Engineering'
+        submitted_by_department: 'Computer Science and Engineering'
     };
 
     const form = document.getElementById('cover-page-form');
