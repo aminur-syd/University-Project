@@ -218,16 +218,16 @@
 }
 
 .paper-stage {
-    padding: 14px;
+    padding: 14px 0;
     border-radius: 26px;
     background:
         linear-gradient(180deg, rgba(226, 232, 240, 0.44), rgba(255, 255, 255, 0.75)),
         repeating-linear-gradient(45deg, rgba(226, 232, 240, 0.2), rgba(226, 232, 240, 0.2) 10px, rgba(255, 255, 255, 0.12) 10px, rgba(255, 255, 255, 0.12) 20px);
-    overflow-x: auto;
+    overflow-x: hidden;
 }
 
 .cover-paper {
-    width: 210mm;
+    width: min(210mm, 100%);
     min-height: 297mm;
     margin: 0 auto;
     padding: 12mm 15mm 16mm;
@@ -237,6 +237,10 @@
     box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
     position: relative;
     overflow: hidden;
+}
+
+body.is-exporting .cover-paper {
+    width: 210mm;
 }
 
 .cover-paper::before {
@@ -320,7 +324,7 @@
 }
 
 .cover-paper__header h3 {
-    margin-top: 18px;
+    margin-top: 30px;
     font-family: 'Inter', sans-serif;
     font-size: 1.14rem;
     line-height: 1.34;
@@ -332,7 +336,7 @@
 .cover-paper__divider {
     width: 240px;
     height: 3px;
-    margin: 18px auto 0;
+    margin: 24px auto 0;
     background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.45), transparent);
 }
 
@@ -368,7 +372,7 @@
 }
 
 .cover-paper__sections {
-    margin-top: 28px;
+    margin-top: 54px;
     display: grid;
     gap: 82px;
 }
