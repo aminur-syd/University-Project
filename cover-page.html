@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Cover Page - Lost &amp; Found | World University of Bangladesh (WUB)</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=20260222">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20260222">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260331-01">
+    <link rel="stylesheet" href="assets/css/cover-page.css?v=20260331-01">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="cover-builder-page">
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
+            </a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="browse.html">Browse Items</a>
+                <a href="cover-page.html" class="active">Create Cover Page</a>
+                <div id="auth-links">
+                    <a href="login.html" class="btn btn-secondary">Login</a>
+                    <a href="register.html" class="btn btn-primary">Register</a>
+                </div>
+                <div id="user-links" style="display: none;">
+                    <a href="#" id="dashboard-link">Dashboard</a>
+                    <span id="welcome-msg" style="font-weight: 600; color: var(--text-color);"></span>
+                    <button id="logout-btn" class="btn btn-outline">Logout</button>
+                </div>
+            </div>
+            <button class="hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="cover-builder-main">
+        <section class="cover-builder-shell">
+            <div class="cover-builder-intro">
+                <div class="cover-builder-copy">
+                    <span class="cover-builder-copy__eyebrow">
+                        <i class="fas fa-file-lines" aria-hidden="true"></i>
+                        WUB Academic Template
+                    </span>
+                    <h1>Create a polished cover page in minutes.</h1>
+                    <p>Fill in your academic details, review the A4 preview, and download a clean single-page PDF that
+                        matches the World University of Bangladesh cover-page format.</p>
+                </div>
+                <div class="cover-builder-stat">
+                    <strong>A4 PDF Ready</strong>
+                    <span>Direct one-click export with a live preview and editable WUB template fields.</span>
+                </div>
+            </div>
+
+            <div class="cover-builder-layout">
+                <section class="builder-panel" aria-labelledby="builder-panel-title">
+                    <div class="builder-panel__header">
+                        <h2 id="builder-panel-title">Template Details</h2>
+                        <p>Adjust the academic information on the left and the final cover page updates instantly.</p>
+                    </div>
+
+                    <form id="cover-page-form" class="builder-form">
+                        <div class="builder-section">
+                            <div class="builder-section__title">
+                                <h3>Document Setup</h3>
+                                <span>WUB Format</span>
+                            </div>
+                            <div class="builder-grid">
+                                <div class="builder-field builder-field--full">
+                                    <label for="department">Department</label>
+                                    <input type="text" id="department" name="department" autocomplete="off">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <label for="document_type">Document Type</label>
+                                    <input type="text" id="document_type" name="document_type" autocomplete="off">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <label for="course_title">Course Title</label>
+                                    <input type="text" id="course_title" name="course_title" autocomplete="off">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <label for="course_code">Course Code</label>
+                                    <input type="text" id="course_code" name="course_code" autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="builder-section">
+                            <div class="builder-section__title">
+                                <h3>Submitted To</h3>
+                                <span>Teacher Details</span>
+                            </div>
+                            <div class="builder-grid">
+                                <div class="builder-field builder-field--full">
+                                    <label for="submitted_to_name">Teacher Name</label>
+                                    <input type="text" id="submitted_to_name" name="submitted_to_name" autocomplete="off">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <label for="submitted_to_designation">Designation</label>
+                                    <input type="text" id="submitted_to_designation" name="submitted_to_designation"
+                                        autocomplete="off">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <label for="submitted_to_department">Department</label>
+                                    <input type="text" id="submitted_to_department" name="submitted_to_department"
+                                        autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="builder-section">
+                            <div class="builder-section__title">
+                                <h3>Submitted By</h3>
+                                <span>Student Details</span>
+                            </div>
+                            <div class="builder-grid">
+                                <div class="builder-field builder-field--full">
+                                    <label for="submitted_by_name">Student Name</label>
+                                    <input type="text" id="submitted_by_name" name="submitted_by_name" autocomplete="off">
+                                </div>
+                                <div class="builder-field">
+                                    <label for="submitted_by_id">ID No</label>
+                                    <input type="text" id="submitted_by_id" name="submitted_by_id" autocomplete="off">
+                                </div>
+                                <div class="builder-field">
+                                    <label for="submitted_by_batch">Batch</label>
+                                    <input type="text" id="submitted_by_batch" name="submitted_by_batch"
+                                        autocomplete="off">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <label for="submitted_by_department">Department</label>
+                                    <input type="text" id="submitted_by_department" name="submitted_by_department"
+                                        autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="builder-actions">
+                            <button type="button" id="reset-cover-page" class="btn btn-secondary">
+                                <i class="fas fa-rotate-left" aria-hidden="true"></i>
+                                Reset
+                            </button>
+                            <button type="button" id="download-cover-page" class="btn btn-primary">
+                                <i class="fas fa-file-pdf" aria-hidden="true"></i>
+                                Download PDF
+                            </button>
+                        </div>
+
+                        <p id="cover-page-status" class="builder-status" aria-live="polite"></p>
+                    </form>
+                </section>
+
+                <section class="preview-panel" aria-labelledby="preview-panel-title">
+                    <div class="preview-panel__header">
+                        <div>
+                            <h2 id="preview-panel-title">Live A4 Preview</h2>
+                            <p>The PDF export uses this single-page layout exactly.</p>
+                        </div>
+                        <span class="preview-badge">
+                            <i class="fas fa-circle-check" aria-hidden="true"></i>
+                            Single Page
+                        </span>
+                    </div>
+
+                    <div class="paper-stage">
+                        <article class="cover-paper" id="cover-paper">
+                            <div class="cover-paper__accent" aria-hidden="true"></div>
+                            <div class="cover-paper__body">
+                                <div class="cover-paper__logo">
+                                    <img src="assets/images/wub.png" alt="World University of Bangladesh logo">
+                                </div>
+
+                                <header class="cover-paper__header">
+                                    <h1>World University of Bangladesh (WUB)</h1>
+                                    <h2 id="preview-department">Department of Computer Science and Engineering</h2>
+                                    <h3 id="preview-document-type">LAB REPORT / ASSIGNMENT / FORUM</h3>
+                                    <div class="cover-paper__divider"></div>
+                                </header>
+
+                                <section class="cover-paper__course" aria-label="Course details">
+                                    <div class="cover-line">
+                                        <span class="cover-line__label">Course Title:</span>
+                                        <span class="cover-line__value" id="preview-course-title">Your Course Title</span>
+                                    </div>
+                                    <div class="cover-line">
+                                        <span class="cover-line__label">Course Code:</span>
+                                        <span class="cover-line__value" id="preview-course-code">Your Course Code</span>
+                                    </div>
+                                </section>
+
+                                <section class="cover-paper__sections">
+                                    <div class="cover-section">
+                                        <h4 class="cover-section__title">Submitted To</h4>
+                                        <div class="cover-section__body">
+                                            <div class="cover-line">
+                                                <span class="cover-line__label">Name:</span>
+                                                <span class="cover-line__value cover-section__text"
+                                                    id="preview-submitted-to-name">Teacher Name</span>
+                                            </div>
+                                            <div class="cover-section__text" id="preview-submitted-to-designation">
+                                                Designation
+                                            </div>
+                                            <div class="cover-section__text" id="preview-submitted-to-department">
+                                                Department of Computer Science and Engineering
+                                            </div>
+                                            <div class="cover-section__university">World University of Bangladesh</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="cover-section">
+                                        <h4 class="cover-section__title">Submitted By</h4>
+                                        <div class="cover-section__body">
+                                            <div class="cover-line">
+                                                <span class="cover-line__label">Name:</span>
+                                                <span class="cover-line__value cover-section__text"
+                                                    id="preview-submitted-by-name">Your Name</span>
+                                            </div>
+                                            <div class="cover-line">
+                                                <span class="cover-line__label">ID No:</span>
+                                                <span class="cover-line__value cover-section__text"
+                                                    id="preview-submitted-by-id">Your ID</span>
+                                            </div>
+                                            <div class="cover-line">
+                                                <span class="cover-line__label">Batch:</span>
+                                                <span class="cover-line__value cover-section__text"
+                                                    id="preview-submitted-by-batch">Batch</span>
+                                            </div>
+                                            <div class="cover-line">
+                                                <span class="cover-line__label">Department:</span>
+                                                <span class="cover-line__value cover-section__text"
+                                                    id="preview-submitted-by-department">Department of Computer Science and
+                                                    Engineering</span>
+                                            </div>
+                                            <div class="cover-section__university">World University of Bangladesh</div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <div class="cover-paper__footer">
+                                    <span class="cover-paper__footer-note">Prepared with the WUB cover-page builder</span>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-grid">
+            <div class="footer-col">
+                <h3>
+                    <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img" style="height: 50px;">
+                </h3>
+                <p>Helping the World University of Bangladesh (WUB) community track lost belongings efficiently and
+                    securely.</p>
+                <div class="social-links">
+                    <a href="https://facebook.com/sydneyaminur"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://x.com/sydneyaminur"><i class="fa-brands fa-x-twitter"></i></a>
+                    <a href="https://instagram.com/aminur_syd"><i class="fab fa-instagram"></i></a>
+                    <a href="https://github.com/aminur-syd"><i class="fab fa-github"></i></a>
+                    <a href="http://linkedin.com/in/sydneyaminur"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="browse.html">Browse</a></li>
+                    <li><a href="cover-page.html">Create Cover Page</a></li>
+                    <li><a href="login.html">Login</a></li>
+                    <li><a href="register.html">Register</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Contact</h4>
+                <ul>
+                    <li><i class="fas fa-envelope"></i> help@mylostandfound.tech</li>
+                    <li><i class="fas fa-phone"></i> +880 1626 534599</li>
+                    <li><i class="fas fa-map-marker-alt"></i> World University of Bangladesh (WUB)</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Lost & Found - World University of Bangladesh (WUB). All rights reserved.</p>
+            <div class="cloudflare-badge" role="img" aria-label="Secured by Cloudflare">
+                <span class="cloudflare-badge__text">Secured by Cloudflare</span>
+                <i class="fa-brands fa-cloudflare cloudflare-badge__logo" aria-hidden="true"></i>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="assets/js/firebase-config.js"></script>
+    <script type="module" src="assets/js/auth.js"></script>
+    <script src="assets/js/public-nav.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+        referrerpolicy="no-referrer"></script>
+    <script src="assets/js/cover-page.js"></script>
+</body>
+
+</html>
