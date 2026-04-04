@@ -9,70 +9,10 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20260222">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
-    <link rel="stylesheet" href="assets/css/style.css?v=20260302-03">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260404-01">
+    <link rel="stylesheet" href="assets/css/auth.css?v=20260404-01">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        .auth-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: calc(100vh - 74px - 200px);
-            /* Adjust for navbar and footer */
-            padding: 40px 20px;
-        }
-
-        .auth-box {
-            background: white;
-            padding: 2rem;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .auth-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: var(--border-radius);
-            font-family: inherit;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .auth-footer {
-            margin-top: 1.5rem;
-            text-align: center;
-            font-size: 0.9rem;
-        }
-
-        .error-message {
-            color: var(--danger);
-            font-size: 0.875rem;
-            margin-top: 0.5rem;
-            display: none;
-        }
-    </style>
 </head>
 
 <body>
@@ -94,17 +34,17 @@
                 <div class="form-group">
                     <label for="name">Full Name</label>
                     <input type="text" id="name" class="form-control" required>
-                    <div class="validation-message" id="name-error"></div>
+                    <div class="validation-message" id="name-error" hidden></div>
                 </div>
                 <div class="form-group">
                     <label for="email">Email Address</label>
                     <input type="email" id="email" class="form-control" required>
-                    <div class="validation-message" id="email-error"></div>
+                    <div class="validation-message" id="email-error" hidden></div>
                 </div>
                 <div class="form-group">
                     <label for="phone">Phone Number</label>
                     <input type="tel" id="phone" class="form-control" required>
-                    <div class="validation-message" id="phone-error"></div>
+                    <div class="validation-message" id="phone-error" hidden></div>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
@@ -128,32 +68,31 @@
                 <div class="form-group">
                     <label for="address">Address</label>
                     <input type="text" id="address" class="form-control" required>
-                    <div class="validation-message" id="address-error"></div>
+                    <div class="validation-message" id="address-error" hidden></div>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="auth-form-row">
+                    <div class="form-group">
                         <label for="city">City</label>
                         <input type="text" id="city" class="form-control" required>
-                        <div class="validation-message" id="city-error"></div>
+                        <div class="validation-message" id="city-error" hidden></div>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group">
                         <label for="zip">Zip Code</label>
                         <input type="text" id="zip" class="form-control" required>
-                        <div class="validation-message" id="zip-error"></div>
+                        <div class="validation-message" id="zip-error" hidden></div>
                     </div>
                 </div>
-                <div class="error-message" id="register-error"></div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
+                <div class="error-message" id="register-error" hidden></div>
+                <button type="submit" class="btn btn-primary w-full">Register</button>
             </form>
-            <div style="text-align: center; margin: 20px 0;">
+            <div class="auth-divider">
                 <p>OR</p>
-                <button id="google-btn" class="btn btn-google"
-                    style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <button id="google-btn" class="btn btn-google w-full">
                     <i class="fab fa-google"></i> Sign up with Google
                 </button>
             </div>
             <div class="auth-footer">
-                <p>Already have an account? <a href="login.html" style="color: var(--primary-color);">Login here</a></p>
+                <p>Already have an account? <a href="login.html" class="auth-link-inline">Login here</a></p>
             </div>
         </div>
     </div>
@@ -163,7 +102,7 @@
         <div class="container footer-grid">
             <div class="footer-col">
                 <h3>
-                    <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img" style="height: 50px;">
+                    <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
                 </h3>
                 <p>Helping the World University of Bangladesh (WUB) community track lost belongings efficiently and securely.</p>
                 <div class="social-links">
@@ -201,8 +140,8 @@
         </div>
     </footer>
 
-    <script type="module" src="assets/js/firebase-config.js"></script>
-    <script type="module" src="assets/js/auth.js"></script>
+    <script type="module" src="assets/js/firebase-config.js?v=20260404-01"></script>
+    <script type="module" src="assets/js/auth.js?v=20260404-01"></script>
 </body>
 
 </html>

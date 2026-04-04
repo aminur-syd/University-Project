@@ -25,6 +25,13 @@ Web-based Lost & Found platform for a university campus. Users can post lost/fou
 - `assets/css/`: styles
 - `firestore.rules`, `storage.rules`: Firebase security rules
 
+## Code Organization for Presentation
+
+- `*.html` files are page entrypoints only. They contain page structure and references to external assets.
+- `assets/css/` contains styling only. Shared styles live in `style.css` and dashboard layout lives in `dashboard.css`, with extra page-specific CSS files where needed.
+- `assets/js/` contains behavior only. Authentication, page loading, dashboard logic, posts, claims, chats, and admin/staff actions are all handled from external JavaScript modules.
+- This separation keeps HTML, CSS, and JavaScript independent so the project is easier to review and explain in class without changing how the website works.
+
 ## Run Locally
 
 Because this is a static frontend, you can serve it with any local HTTP server.

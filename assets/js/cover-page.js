@@ -60,7 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const setStatus = (message, isError = false) => {
         statusElement.textContent = message;
-        statusElement.style.color = isError ? '#dc2626' : '#4361ee';
+        statusElement.classList.toggle('text-danger', isError);
+        statusElement.classList.toggle('text-primary', !isError);
     };
 
     const createFilename = () => {

@@ -9,24 +9,22 @@
     <link rel="icon" type="image/png" sizes="32x32" href="../assets/images/favicon-32x32.png?v=20260222">
     <link rel="apple-touch-icon" sizes="180x180" href="../assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20260302-03">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20260404-01">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260404-01">
 </head>
 
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="../index.html" class="logo">
+            <a href="../index.html" class="logo logo-title">
                 <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
-                <span
-                    style="font-size: 0.8rem; background: var(--danger); color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle;">ADMIN</span>
+                <span class="role-badge role-badge--admin">ADMIN</span>
             </a>
             <div class="nav-links">
-                <span style="font-weight: 600;">Welcome, <span id="user-name">Admin</span></span>
-                <button id="logout-btn" class="btn btn-outline"
-                    style="color: var(--text-color); border-color: var(--text-color);">Logout</button>
+                <span class="dashboard-nav-welcome">Welcome, <span id="user-name">Admin</span></span>
+                <button id="logout-btn" class="btn btn-outline btn-outline-dark">Logout</button>
             </div>
         </div>
     </nav>
@@ -44,23 +42,17 @@
         </aside>
 
         <main class="main-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <div class="dashboard-toolbar">
                 <h2>Manage Users</h2>
-                <div class="stat-card"
-                    style="padding: 10px 20px; border-radius: 50px; background: var(--gradient-1); color: white; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-md);">
-                    <i class="fas fa-users"></i> <span style="font-weight: 600;">Total Users: <span
-                            id="total-users-badge">0</span></span>
+                <div class="summary-chip">
+                    <i class="fas fa-users"></i>
+                    <span class="summary-chip__value">Total Users: <span id="total-users-badge">0</span></span>
                 </div>
             </div>
 
-            <!-- Administrators Section -->
-            <div class="table-container"
-                style="padding: 24px; margin-bottom: 40px; border-left: 4px solid var(--danger);">
-                <h3
-                    style="font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-user-shield" style="color: var(--danger);"></i> Administrators
-                </h3>
-                <div style="overflow-x: auto;">
+            <div class="section-card section-card--danger mb-30">
+                <h3 class="section-heading"><i class="fas fa-user-shield text-danger"></i> Administrators</h3>
+                <div class="table-scroll">
                     <table class="users-table">
                         <thead>
                             <tr>
@@ -71,22 +63,17 @@
                             </tr>
                         </thead>
                         <tbody id="admin-list">
-                            <tr>
-                                <td colspan="4" style="text-align: center;">Loading...</td>
+                            <tr class="table-row-message table-row-message--muted">
+                                <td colspan="4">Loading...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Staff Section -->
-            <div class="table-container"
-                style="padding: 24px; margin-bottom: 40px; border-left: 4px solid var(--primary-color);">
-                <h3
-                    style="font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-user-tie" style="color: var(--primary-color);"></i> Staff Members
-                </h3>
-                <div style="overflow-x: auto;">
+            <div class="section-card section-card--primary mb-30">
+                <h3 class="section-heading"><i class="fas fa-user-tie text-primary"></i> Staff Members</h3>
+                <div class="table-scroll">
                     <table class="users-table">
                         <thead>
                             <tr>
@@ -97,21 +84,17 @@
                             </tr>
                         </thead>
                         <tbody id="staff-list">
-                            <tr>
-                                <td colspan="4" style="text-align: center;">Loading...</td>
+                            <tr class="table-row-message table-row-message--muted">
+                                <td colspan="4">Loading...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Regular Users Section -->
-            <div class="table-container" style="padding: 24px; border-left: 4px solid #9ca3af;">
-                <h3
-                    style="font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-user" style="color: #9ca3af;"></i> Regular Users
-                </h3>
-                <div style="overflow-x: auto;">
+            <div class="section-card section-card--muted">
+                <h3 class="section-heading"><i class="fas fa-user text-light"></i> Regular Users</h3>
+                <div class="table-scroll">
                     <table class="users-table">
                         <thead>
                             <tr>
@@ -122,8 +105,8 @@
                             </tr>
                         </thead>
                         <tbody id="users-list">
-                            <tr>
-                                <td colspan="4" style="text-align: center;">Loading...</td>
+                            <tr class="table-row-message table-row-message--muted">
+                                <td colspan="4">Loading...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -137,7 +120,7 @@
         <div class="container footer-grid">
             <div class="footer-col">
                 <h3>
-                    <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img" style="height: 50px;">
+                    <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
                 </h3>
                 <p>Helping the World University of Bangladesh (WUB) community track lost belongings efficiently and securely.</p>
                 <div class="social-links">
@@ -178,10 +161,10 @@
     <div class="modal-overlay" id="role-modal">
         <div class="modal-container">
             <h3 class="modal-title">Change User Role</h3>
-            <p id="role-modal-user" style="margin-bottom: 20px; color: var(--text-light);"></p>
+            <p id="role-modal-user" class="modal-subcopy"></p>
             <form id="role-form">
                 <input type="hidden" id="role-user-id">
-                <div class="form-group" style="text-align: left;">
+                <div class="form-group">
                     <label for="new-role">Select New Role</label>
                     <select id="new-role" class="form-control" required>
                         <option value="user">User</option>
@@ -189,17 +172,17 @@
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button type="button" class="btn btn-outline" id="cancel-role-btn" style="flex: 1;">Cancel</button>
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Update Role</button>
+                <div class="form-actions-split">
+                    <button type="button" class="btn btn-outline btn-outline-dark" id="cancel-role-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Role</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script type="module" src="../assets/js/firebase-config.js"></script>
-    <script type="module" src="../assets/js/auth.js"></script>
-    <script type="module" src="../assets/js/admin.js"></script>
+    <script type="module" src="../assets/js/firebase-config.js?v=20260404-01"></script>
+    <script type="module" src="../assets/js/auth.js?v=20260404-01"></script>
+    <script type="module" src="../assets/js/admin.js?v=20260404-01"></script>
 </body>
 
 </html>

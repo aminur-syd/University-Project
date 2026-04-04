@@ -5,94 +5,106 @@ import {
     query,
     where,
     orderBy,
-    limit,
     updateDoc,
     doc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const logsContainer = document.getElementById('logs-container');
 const totalUsers = document.getElementById('total-users');
-const totalItems = document.getElementById('total-items');
 const totalClaims = document.getElementById('total-claims');
 
-// Role Management Modal
 const roleModal = document.getElementById('role-modal');
 const roleForm = document.getElementById('role-form');
 const cancelRoleBtn = document.getElementById('cancel-role-btn');
 const roleUserIdInput = document.getElementById('role-user-id');
-const roleModalUserP = document.getElementById('role-modal-user');
+const roleModalUser = document.getElementById('role-modal-user');
 const newRoleSelect = document.getElementById('new-role');
 
-const openRoleModal = (userId, userName, currentRole) => {
-    roleUserIdInput.value = userId;
-    roleModalUserP.textContent = `User: ${userName} (${currentRole})`;
-    newRoleSelect.value = currentRole;
-    roleModal.classList.add('active');
-};
-
-if (cancelRoleBtn) {
-    cancelRoleBtn.addEventListener('click', () => {
-        roleModal.classList.remove('active');
-    });
-}
-
-if (roleForm) {
-    roleForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const userId = roleUserIdInput.value;
-        const newRole = newRoleSelect.value;
-        const submitBtn = roleForm.querySelector('button[type="submit"]');
-
-        if (!userId) return;
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Updating...";
-
-        try {
-            await updateDoc(doc(db, "users", userId), {
-                role: newRole
-            });
-            showToast(`User role successfully updated to ${newRole.toUpperCase()}.`, 'success');
-            roleModal.classList.remove('active');
-            // Refresh table quietly without reloading page
-            fetchUsers();
-        } catch (error) {
-            console.error("Error updating role:", error);
-            showToast("Error updating role. Please check permissions.", 'error');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Update Role";
-        }
-    });
-}
-
-// Fetch Users into 3 separate tables
 const adminList = document.getElementById('admin-list');
 const staffList = document.getElementById('staff-list');
 const usersList = document.getElementById('users-list');
 const totalUsersBadge = document.getElementById('total-users-badge');
 
-// Define in module scope so roleForm event listener can call it
+function renderTableMessage(message, colSpan, variant = 'muted') {
+    const typeClass = variant === 'error' ? 'table-row-message--error' : 'table-row-message--muted';
+    return `
+        <tr class="table-row-message ${typeClass}">
+            <td colspan="${colSpan}">${message}</td>
+        </tr>
+    `;
+}
+
+function getTypePill(type) {
+    const typeClass = type === 'lost' ? 'type-pill--lost' : 'type-pill--found';
+    return `<span class="type-pill ${typeClass}">${type.toUpperCase()}</span>`;
+}
+
+function openRoleModal(userId, userName, currentRole) {
+    if (!roleModal || !roleUserIdInput || !roleModalUser || !newRoleSelect) {
+        return;
+    }
+
+    roleUserIdInput.value = userId;
+    roleModalUser.textContent = `User: ${userName} (${currentRole})`;
+    newRoleSelect.value = currentRole;
+    roleModal.classList.add('active');
+}
+
+if (cancelRoleBtn && roleModal) {
+    cancelRoleBtn.addEventListener('click', () => {
+        roleModal.classList.remove('active');
+    });
+}
+
 let fetchUsers = async () => { };
+
+if (roleForm) {
+    roleForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const userId = roleUserIdInput.value;
+        const newRole = newRoleSelect.value;
+        const submitBtn = roleForm.querySelector('button[type="submit"]');
+
+        if (!userId || !submitBtn) {
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Updating...';
+
+        try {
+            await updateDoc(doc(db, 'users', userId), { role: newRole });
+            showToast(`User role successfully updated to ${newRole.toUpperCase()}.`, 'success');
+            roleModal.classList.remove('active');
+            fetchUsers();
+        } catch (error) {
+            console.error('Error updating role:', error);
+            showToast('Error updating role. Please check permissions.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Update Role';
+        }
+    });
+}
 
 if (adminList || staffList || usersList) {
     fetchUsers = async () => {
         try {
-            const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
-            const querySnapshot = await getDocs(q);
+            const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+            const usersSnapshot = await getDocs(usersQuery);
 
             if (adminList) adminList.innerHTML = '';
             if (staffList) staffList.innerHTML = '';
             if (usersList) usersList.innerHTML = '';
 
             if (totalUsersBadge) {
-                totalUsersBadge.textContent = querySnapshot.size;
+                totalUsersBadge.textContent = usersSnapshot.size;
             }
 
-            if (querySnapshot.empty) {
-                if (adminList) adminList.innerHTML = '<tr><td colspan="4" style="text-align:center;">No admins found.</td></tr>';
-                if (staffList) staffList.innerHTML = '<tr><td colspan="4" style="text-align:center;">No staff found.</td></tr>';
-                if (usersList) usersList.innerHTML = '<tr><td colspan="4" style="text-align:center;">No users found.</td></tr>';
+            if (usersSnapshot.empty) {
+                if (adminList) adminList.innerHTML = renderTableMessage('No admins found.', 4);
+                if (staffList) staffList.innerHTML = renderTableMessage('No staff found.', 4);
+                if (usersList) usersList.innerHTML = renderTableMessage('No users found.', 4);
                 return;
             }
 
@@ -100,138 +112,138 @@ if (adminList || staffList || usersList) {
             let staffCount = 0;
             let userCount = 0;
 
-            querySnapshot.forEach((docSnap) => {
+            usersSnapshot.forEach((docSnap) => {
                 const user = docSnap.data();
                 const joined = user.createdAt ? user.createdAt.toDate().toLocaleDateString() : 'N/A';
                 const roleLower = user.role?.toLowerCase() || 'user';
+                const initial = user.name ? user.name.charAt(0).toUpperCase() : '?';
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+                const row = document.createElement('tr');
+                row.innerHTML = `
                     <td>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--primary-color);">
-                                ${user.name ? user.name.charAt(0).toUpperCase() : '?'}
-                            </div>
-                            <span style="font-weight: 600;">${user.name}</span>
+                        <div class="user-cell">
+                            <div class="avatar-badge">${initial}</div>
+                            <span class="fw-semibold">${user.name || 'Unknown User'}</span>
                         </div>
                     </td>
-                    <td>${user.email}</td>
+                    <td>${user.email || 'N/A'}</td>
                     <td>${joined}</td>
                     <td>
-                        <button class="btn btn-outline edit-role-btn" data-id="${docSnap.id}" data-name="${user.name}" data-role="${user.role}" style="padding: 6px 12px; font-size: 0.8rem; border-color: var(--border-color); color: var(--text-color);">
-                            <i class="fas fa-edit"></i> Edit Role
+                        <button class="btn btn-outline btn-outline-dark btn-sm edit-role-btn" data-id="${docSnap.id}" data-name="${user.name || 'Unknown User'}" data-role="${user.role || 'user'}">
+                            <i class="fas fa-edit"></i>
+                            Edit Role
                         </button>
                     </td>
                 `;
 
                 if (roleLower === 'admin' && adminList) {
-                    adminList.appendChild(tr);
-                    adminCount++;
+                    adminList.appendChild(row);
+                    adminCount += 1;
                 } else if (roleLower === 'staff' && staffList) {
-                    staffList.appendChild(tr);
-                    staffCount++;
+                    staffList.appendChild(row);
+                    staffCount += 1;
                 } else if (usersList) {
-                    usersList.appendChild(tr);
-                    userCount++;
+                    usersList.appendChild(row);
+                    userCount += 1;
                 }
             });
 
-            if (adminCount === 0 && adminList) adminList.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-light);">No administrators registered.</td></tr>';
-            if (staffCount === 0 && staffList) staffList.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-light);">No staff members registered.</td></tr>';
-            if (userCount === 0 && usersList) usersList.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-light);">No regular users registered.</td></tr>';
+            if (adminCount === 0 && adminList) adminList.innerHTML = renderTableMessage('No administrators registered.', 4);
+            if (staffCount === 0 && staffList) staffList.innerHTML = renderTableMessage('No staff members registered.', 4);
+            if (userCount === 0 && usersList) usersList.innerHTML = renderTableMessage('No regular users registered.', 4);
 
-            // Attach Event Listeners
-            document.querySelectorAll('.edit-role-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    openRoleModal(btn.dataset.id, btn.dataset.name, btn.dataset.role);
+            document.querySelectorAll('.edit-role-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    openRoleModal(button.dataset.id, button.dataset.name, button.dataset.role);
                 });
             });
-
         } catch (error) {
             console.error(error);
-            if (adminList) adminList.innerHTML = '<tr><td colspan="4" style="color:var(--danger); text-align:center;">Error loading.</td></tr>';
-            if (staffList) staffList.innerHTML = '<tr><td colspan="4" style="color:var(--danger); text-align:center;">Error loading.</td></tr>';
-            if (usersList) usersList.innerHTML = '<tr><td colspan="4" style="color:var(--danger); text-align:center;">Error loading.</td></tr>';
+            if (adminList) adminList.innerHTML = renderTableMessage('Error loading.', 4, 'error');
+            if (staffList) staffList.innerHTML = renderTableMessage('Error loading.', 4, 'error');
+            if (usersList) usersList.innerHTML = renderTableMessage('Error loading.', 4, 'error');
         }
     };
+
     fetchUsers();
 }
 
-// Fetch Detailed Stats (Overview)
 if (totalUsers) {
-    // 1. Total Users
-    getDocs(collection(db, "users")).then(snap => totalUsers.textContent = snap.size);
-
-    // 2. Comprehensive Items Query
-    getDocs(collection(db, "items")).then(snap => {
-        let tItems = 0;
-        let tLost = 0;
-        let tFound = 0;
-        let tPending = 0;
-
-        snap.forEach(doc => {
-            tItems++;
-            const data = doc.data();
-            if (data.type === 'lost') tLost++;
-            if (data.type === 'found') tFound++;
-            if (data.reviewStatus === 'pending') tPending++;
-        });
-
-        const totalItemsEl = document.getElementById('total-items');
-        const lostItemsEl = document.getElementById('lost-items-count');
-        const foundItemsEl = document.getElementById('found-items-count');
-        const pendingPostsEl = document.getElementById('pending-posts-count');
-
-        if (totalItemsEl) totalItemsEl.textContent = tItems;
-        if (lostItemsEl) lostItemsEl.textContent = tLost;
-        if (foundItemsEl) foundItemsEl.textContent = tFound;
-        if (pendingPostsEl) pendingPostsEl.textContent = tPending;
+    getDocs(collection(db, 'users')).then((snapshot) => {
+        totalUsers.textContent = snapshot.size;
     });
 
-    // 3. Active Handover Chats
-    getDocs(query(collection(db, "chats"), where("status", "==", "active"))).then(snap => totalClaims.textContent = snap.size);
+    getDocs(collection(db, 'items')).then((snapshot) => {
+        let items = 0;
+        let lost = 0;
+        let found = 0;
+        let pending = 0;
 
-    // 4. Recent Pending Items (Action Needed)
+        snapshot.forEach((docSnap) => {
+            items += 1;
+            const data = docSnap.data();
+            if (data.type === 'lost') lost += 1;
+            if (data.type === 'found') found += 1;
+            if (data.reviewStatus === 'pending') pending += 1;
+        });
+
+        const totalItems = document.getElementById('total-items');
+        const lostItems = document.getElementById('lost-items-count');
+        const foundItems = document.getElementById('found-items-count');
+        const pendingPosts = document.getElementById('pending-posts-count');
+
+        if (totalItems) totalItems.textContent = items;
+        if (lostItems) lostItems.textContent = lost;
+        if (foundItems) foundItems.textContent = found;
+        if (pendingPosts) pendingPosts.textContent = pending;
+    });
+
+    if (totalClaims) {
+        getDocs(query(collection(db, 'chats'), where('status', '==', 'active'))).then((snapshot) => {
+            totalClaims.textContent = snapshot.size;
+        });
+    }
+
     const recentPendingContainer = document.getElementById('recent-pending-items');
     if (recentPendingContainer) {
         const fetchRecentPending = async () => {
             try {
-                // To order by createdAt properly while filtering, an index is required
-                // For simplicity before index creation, we'll fetch pending and sort in memory if needed
-                const qPending = query(collection(db, "items"), where("reviewStatus", "==", "pending"));
-                const pendingSnap = await getDocs(qPending);
-
+                const pendingQuery = query(collection(db, 'items'), where('reviewStatus', '==', 'pending'));
+                const pendingSnapshot = await getDocs(pendingQuery);
                 recentPendingContainer.innerHTML = '';
 
-                if (pendingSnap.empty) {
-                    recentPendingContainer.innerHTML = '<tr><td colspan="2"><span style="color: var(--success);"><i class="fas fa-check-circle"></i> All caught up! No pending items.</span></td></tr>';
+                if (pendingSnapshot.empty) {
+                    recentPendingContainer.innerHTML = `
+                        <tr class="table-row-message table-row-message--muted">
+                            <td colspan="2">
+                                <span class="text-success"><i class="fas fa-check-circle"></i> All caught up! No pending items.</span>
+                            </td>
+                        </tr>
+                    `;
                     return;
                 }
 
-                // Convert to array and sort safely in JS for now (limit to 4)
-                let pendingDocs = pendingSnap.docs.map(d => d.data());
-                pendingDocs.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+                const pendingItems = pendingSnapshot.docs.map((docSnap) => docSnap.data());
+                pendingItems.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
 
-                pendingDocs.slice(0, 4).forEach(item => {
-                    const tr = document.createElement('tr');
-                    const badgeClass = item.type === 'lost' ? 'badge-lost' : 'badge-found';
-                    tr.innerHTML = `
-                        <td style="font-weight: 500;">${item.title || 'Untitled'}</td>
-                        <td><span class="item-badge ${badgeClass}">${item.type.toUpperCase()}</span></td>
+                pendingItems.slice(0, 4).forEach((item) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="table-highlight">${item.title || 'Untitled'}</td>
+                        <td>${getTypePill(item.type)}</td>
                     `;
-                    recentPendingContainer.appendChild(tr);
+                    recentPendingContainer.appendChild(row);
                 });
-
-            } catch (err) {
-                console.error(err);
-                recentPendingContainer.innerHTML = '<tr><td colspan="2">Failed to load recent items.</td></tr>';
+            } catch (error) {
+                console.error(error);
+                recentPendingContainer.innerHTML = renderTableMessage('Failed to load recent items.', 2, 'error');
             }
         };
+
         fetchRecentPending();
     }
 }
 
-// Mock Logs (Since we don't have a real logging system yet)
 if (logsContainer) {
     logsContainer.innerHTML = `
         <div class="log-entry">[INFO] System initialized at ${new Date().toLocaleString()}</div>
@@ -239,9 +251,7 @@ if (logsContainer) {
     `;
 }
 
-// --- Toast Notification System ---
 function showToast(message, type = 'success') {
-    // Remove existing toast if present
     const existingToast = document.querySelector('.toast-notification');
     if (existingToast) {
         existingToast.remove();
@@ -251,7 +261,6 @@ function showToast(message, type = 'success') {
     toast.className = `toast-notification toast-${type}`;
 
     const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-
     toast.innerHTML = `
         <div class="toast-icon">
             <i class="fas ${icon}"></i>
@@ -261,14 +270,12 @@ function showToast(message, type = 'success') {
 
     document.body.appendChild(toast);
 
-    // Trigger animation
     setTimeout(() => {
         toast.classList.add('show');
     }, 10);
 
-    // Remove after 3 seconds
     setTimeout(() => {
         toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 400); // Wait for transition to finish
+        setTimeout(() => toast.remove(), 400);
     }, 3000);
 }

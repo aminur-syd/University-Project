@@ -81,14 +81,14 @@ auth.onAuthStateChanged(async (user) => {
                 if (currentChatDoc.status === 'closed') {
                     if (chatStatusBadge) {
                         chatStatusBadge.textContent = "Resolved & Closed";
-                        chatStatusBadge.className = "status-badge status-closed";
+                        chatStatusBadge.className = "chat-status-badge status-closed";
                     }
                     if (chatInput) {
                         chatInput.disabled = true;
                         chatInput.placeholder = "This chat is closed.";
                     }
                     if (sendBtn) sendBtn.disabled = true;
-                    if (handoverBtn) handoverBtn.style.display = 'none';
+                    if (handoverBtn) handoverBtn.hidden = true;
                 }
             } else {
                 alert("Chat session not found.");

@@ -1,4 +1,4 @@
-import { db, auth, storage } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
 import {
     collection,
     addDoc,
@@ -8,100 +8,97 @@ import {
     orderBy,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const myClaimsList = document.getElementById('my-claims-list');
 
-// Submit Claim (Handled from item-details.html technically, but logic here)
-// Note: We need to attach the event listener dynamically in item-details.html or export this function
-// For simplicity, I will attach a global listener or look for the form here if it exists (it exists dynamically)
+function getClaimStatusClass(status) {
+    if (status === 'approved') return 'status-label status-label--approved';
+    if (status === 'rejected') return 'status-label status-label--rejected';
+    return 'status-label status-label--pending';
+}
 
-document.addEventListener('submit', async (e) => {
-    if (e.target && e.target.id === 'claim-form') {
-        e.preventDefault();
+document.addEventListener('submit', async (event) => {
+    if (!event.target || event.target.id !== 'claim-form') {
+        return;
+    }
 
-        const user = auth.currentUser;
-        if (!user) return;
+    event.preventDefault();
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const itemId = urlParams.get('id');
-        const message = document.getElementById('claim-message').value;
-        const submitBtn = e.target.querySelector('button[type="submit"]');
+    const user = auth.currentUser;
+    if (!user) return;
 
-        if (!itemId) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const itemId = urlParams.get('id');
+    const message = document.getElementById('claim-message').value;
+    const submitBtn = event.target.querySelector('button[type="submit"]');
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Submitting...";
+    if (!itemId || !submitBtn) {
+        return;
+    }
 
-        try {
-            // Check if already claimed? (Optional)
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
 
-            await addDoc(collection(db, "claims"), {
-                itemId: itemId,
-                claimerUid: user.uid,
-                claimerName: user.displayName || user.email,
-                message: message,
-                evidenceFiles: [], // TODO: Add file upload if needed, just text for now as per minimal req
-                status: "pending", // pending, approved, rejected
-                createdAt: serverTimestamp()
-            });
+    try {
+        await addDoc(collection(db, 'claims'), {
+            itemId,
+            claimerUid: user.uid,
+            claimerName: user.displayName || user.email,
+            message,
+            evidenceFiles: [],
+            status: 'pending',
+            createdAt: serverTimestamp()
+        });
 
-            alert("Claim submitted successfully! Staff will review it.");
-            window.location.href = "user/my-claims.html";
-        } catch (error) {
-            console.error("Error submitting claim:", error);
-            alert("Error submitting claim: " + error.message);
-            submitBtn.disabled = false;
-        }
+        alert('Claim submitted successfully! Staff will review it.');
+        window.location.href = 'user/my-claims.html';
+    } catch (error) {
+        console.error('Error submitting claim:', error);
+        alert('Error submitting claim: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
     }
 });
 
-// Fetch My Claims
 if (myClaimsList) {
     auth.onAuthStateChanged(async (user) => {
-        if (user) {
-            try {
-                const q = query(
-                    collection(db, "claims"),
-                    where("claimerUid", "==", user.uid),
-                    orderBy("createdAt", "desc")
-                );
+        if (!user) {
+            return;
+        }
 
-                const querySnapshot = await getDocs(q);
-                myClaimsList.innerHTML = '';
+        try {
+            const claimsQuery = query(
+                collection(db, 'claims'),
+                where('claimerUid', '==', user.uid),
+                orderBy('createdAt', 'desc')
+            );
+            const claimsSnapshot = await getDocs(claimsQuery);
+            myClaimsList.innerHTML = '';
 
-                if (querySnapshot.empty) {
-                    myClaimsList.innerHTML = '<p>You haven\'t made any claims yet.</p>';
-                    return;
-                }
-
-                querySnapshot.forEach((doc) => {
-                    const claim = doc.data();
-                    const div = document.createElement('div');
-                    div.className = 'post-item';
-
-                    let statusColor = 'orange';
-                    if (claim.status === 'approved') statusColor = 'green';
-                    if (claim.status === 'rejected') statusColor = 'red';
-
-                    div.innerHTML = `
-                         <div>
-                            <h3>Claim for Item ID: ${claim.itemId}</h3>
-                            <p>Message: ${claim.message}</p>
-                            <span style="color: ${statusColor}; font-weight: bold; font-size: 0.9rem;">Status: ${claim.status}</span>
-                        </div>
-                        <a href="../item-details.html?id=${claim.itemId}" class="btn btn-secondary">View Item</a>
-                    `;
-                    myClaimsList.appendChild(div);
-                });
-            } catch (error) {
-                console.error(error);
-                myClaimsList.innerHTML = '<p>Error loading claims.</p>';
+            if (claimsSnapshot.empty) {
+                myClaimsList.innerHTML = '<p>You haven\'t made any claims yet.</p>';
+                return;
             }
+
+            claimsSnapshot.forEach((docSnap) => {
+                const claim = docSnap.data();
+                const card = document.createElement('div');
+                card.className = 'post-item';
+                card.innerHTML = `
+                    <div class="post-item__content">
+                        <h3 class="post-item__title">Claim for Item ID: ${claim.itemId}</h3>
+                        <p>Message: ${claim.message}</p>
+                        <span class="${getClaimStatusClass(claim.status)}">Status: ${claim.status}</span>
+                    </div>
+                    <div class="post-item__actions">
+                        <a href="../item-details.html?id=${claim.itemId}" class="btn btn-secondary">View Item</a>
+                    </div>
+                `;
+                myClaimsList.appendChild(card);
+            });
+        } catch (error) {
+            console.error(error);
+            myClaimsList.innerHTML = '<p>Error loading claims.</p>';
         }
     });
 }

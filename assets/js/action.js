@@ -17,6 +17,8 @@ const mode = urlParams.get('mode');
 const actionCode = urlParams.get('oobCode');
 
 function setIcon(type) {
+    if (!statusIcon) return;
+
     if (type === 'loading') {
         statusIcon.className = 'status-icon status-loading';
         statusIcon.innerHTML = '<i class="fas fa-circle-notch"></i>';
@@ -39,25 +41,65 @@ function setIcon(type) {
     statusIcon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
 }
 
-function setButton(buttonEl, config) {
+function setButton(buttonElement, config, extraClass = '') {
+    if (!buttonElement) return;
+
+    buttonElement.className = `btn ${extraClass}`.trim();
+
     if (!config) {
-        buttonEl.style.display = 'none';
-        buttonEl.removeAttribute('href');
-        buttonEl.textContent = '';
+        buttonElement.hidden = true;
+        buttonElement.removeAttribute('href');
+        buttonElement.textContent = '';
         return;
     }
 
-    buttonEl.style.display = 'inline-block';
-    buttonEl.textContent = config.label;
-    buttonEl.href = config.href;
+    buttonElement.hidden = false;
+    buttonElement.textContent = config.label;
+    buttonElement.href = config.href;
 }
 
 function setStatus({ type, title, message, primary, secondary }) {
     setIcon(type);
-    statusTitle.textContent = title;
-    statusMessage.textContent = message;
-    setButton(primaryBtn, primary);
-    setButton(secondaryBtn, secondary);
+    if (statusTitle) statusTitle.textContent = title;
+    if (statusMessage) statusMessage.textContent = message;
+    setButton(primaryBtn, primary, 'btn-primary');
+    setButton(secondaryBtn, secondary, 'btn-outline-dark action-button-secondary');
+}
+
+function setInlineStatus(element, message, type = 'error') {
+    if (!element) return;
+
+    element.textContent = message;
+    element.hidden = !message;
+    element.classList.remove('status-message--error', 'status-message--success');
+
+    if (message) {
+        element.classList.add(type === 'success' ? 'status-message--success' : 'status-message--error');
+    }
+}
+
+function togglePasswordVisibility(button, input) {
+    const isPassword = input.getAttribute('type') === 'password';
+    input.setAttribute('type', isPassword ? 'text' : 'password');
+
+    const wrapper = button.closest('.password-input-group');
+    if (wrapper) {
+        wrapper.classList.toggle('is-hidden', !isPassword);
+    }
+
+    button.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+}
+
+function setupPasswordToggles(container) {
+    container.querySelectorAll('.password-toggle-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+            const wrapper = button.closest('.password-input-group');
+            const passwordField = wrapper ? wrapper.querySelector('input') : null;
+            if (passwordField) {
+                togglePasswordVisibility(button, passwordField);
+            }
+        });
+    });
 }
 
 function mapActionError(error, fallbackMessage) {
@@ -92,29 +134,9 @@ function mapResetSubmitError(error) {
     return 'Unable to reset your password right now. Please try again.';
 }
 
-function setupPasswordToggles(container) {
-    const toggleButtons = container.querySelectorAll('.password-toggle-btn');
-    toggleButtons.forEach((btn) => {
-        btn.addEventListener('click', function () {
-            const wrapper = this.closest('.password-input-group');
-            const passwordField = wrapper ? wrapper.querySelector('input') : null;
-            if (!passwordField) return;
-
-            const isPassword = passwordField.getAttribute('type') === 'password';
-            passwordField.setAttribute('type', isPassword ? 'text' : 'password');
-
-            if (isPassword) {
-                wrapper.classList.remove('is-hidden');
-                this.setAttribute('aria-label', 'Hide password');
-            } else {
-                wrapper.classList.add('is-hidden');
-                this.setAttribute('aria-label', 'Show password');
-            }
-        });
-    });
-}
-
 function renderResetForm() {
+    if (!actionContent) return;
+
     actionContent.innerHTML = `
         <form id="reset-password-form">
             <div class="form-group">
@@ -129,7 +151,7 @@ function renderResetForm() {
                         </svg>
                     </button>
                 </div>
-                <ul class="password-requirements" id="password-requirements" style="display: block;">
+                <ul class="password-requirements password-requirements--visible" id="password-requirements">
                     <li id="req-length"><i class="fas fa-circle"></i> At least 6 characters</li>
                     <li id="req-capital"><i class="fas fa-circle"></i> One capital letter</li>
                     <li id="req-number"><i class="fas fa-circle"></i> One number</li>
@@ -148,11 +170,11 @@ function renderResetForm() {
                         </svg>
                     </button>
                 </div>
-                <div class="status-message" id="match-message" style="color: var(--danger);"></div>
+                <div class="status-message status-message--error" id="match-message" hidden></div>
             </div>
 
-            <button type="submit" class="btn btn-primary" id="submit-btn" style="width: 100%;" disabled>Update Password</button>
-            <div class="status-message" id="form-status-message"></div>
+            <button type="submit" class="btn btn-primary w-full" id="submit-btn" disabled>Update Password</button>
+            <div class="status-message" id="form-status-message" hidden></div>
         </form>
     `;
 
@@ -169,16 +191,9 @@ function renderResetForm() {
     setupPasswordToggles(form);
 
     function updateRequirementState(element, isValid) {
-        if (isValid) {
-            element.classList.add('valid');
-            element.classList.remove('invalid');
-            element.querySelector('i').className = 'fas fa-check-circle';
-            return;
-        }
-
-        element.classList.add('invalid');
-        element.classList.remove('valid');
-        element.querySelector('i').className = 'fas fa-circle';
+        element.classList.toggle('valid', isValid);
+        element.classList.toggle('invalid', !isValid);
+        element.querySelector('i').className = isValid ? 'fas fa-check-circle' : 'fas fa-circle';
     }
 
     function checkPasswordValidity() {
@@ -196,18 +211,16 @@ function renderResetForm() {
         let isValid = hasMinLength && hasCapital && hasNumber;
 
         if (!confirmPassword) {
-            matchMessage.style.display = 'none';
+            setInlineStatus(matchMessage, '');
             confirmPasswordInput.classList.remove('error', 'success');
             isValid = false;
         } else if (password !== confirmPassword) {
-            matchMessage.style.display = 'block';
-            matchMessage.textContent = 'Passwords do not match.';
+            setInlineStatus(matchMessage, 'Passwords do not match.');
             confirmPasswordInput.classList.add('error');
             confirmPasswordInput.classList.remove('success');
             isValid = false;
         } else {
-            matchMessage.style.display = 'none';
-            matchMessage.textContent = '';
+            setInlineStatus(matchMessage, '');
             confirmPasswordInput.classList.remove('error');
             confirmPasswordInput.classList.add('success');
         }
@@ -220,14 +233,12 @@ function renderResetForm() {
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-
-        const newPassword = newPasswordInput.value;
         submitBtn.disabled = true;
         submitBtn.textContent = 'Updating...';
-        formStatusMessage.style.display = 'none';
+        setInlineStatus(formStatusMessage, '');
 
         try {
-            await confirmPasswordReset(auth, actionCode, newPassword);
+            await confirmPasswordReset(auth, actionCode, newPasswordInput.value);
             actionContent.innerHTML = '';
             setStatus({
                 type: 'success',
@@ -240,9 +251,7 @@ function renderResetForm() {
                 window.location.href = 'login.html';
             }, 3000);
         } catch (error) {
-            formStatusMessage.style.display = 'block';
-            formStatusMessage.style.color = 'var(--danger)';
-            formStatusMessage.textContent = mapResetSubmitError(error);
+            setInlineStatus(formStatusMessage, mapResetSubmitError(error));
             submitBtn.disabled = false;
             submitBtn.textContent = 'Update Password';
         }

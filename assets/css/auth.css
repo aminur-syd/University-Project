@@ -1,0 +1,126 @@
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 74px - 200px);
+    padding: 40px 20px;
+}
+
+.auth-box {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.auth-footer {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.auth-divider {
+    text-align: center;
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.auth-link-row {
+    text-align: right;
+    margin-bottom: 15px;
+}
+
+.auth-link {
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+.auth-link-inline {
+    color: var(--primary-color);
+}
+
+.auth-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.auth-form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.auth-form-row .form-group {
+    flex: 1;
+}
+
+.auth-alt-section {
+    margin-top: 20px;
+}
+
+.auth-success {
+    text-align: center;
+    padding: 20px;
+}
+
+.auth-success__icon {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.auth-success__title {
+    margin-bottom: 10px;
+}
+
+.auth-success__copy {
+    color: var(--text-light);
+    margin-bottom: 20px;
+}
+
+.error-message {
+    color: var(--danger);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.error-message[hidden] {
+    display: none;
+}
+
+.error-message.form-message--success {
+    color: var(--success);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: var(--border-radius);
+    font-family: inherit;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}

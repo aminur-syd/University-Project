@@ -1,0 +1,95 @@
+.action-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 74px - 200px);
+    padding: 40px 20px;
+}
+
+.action-box {
+    background: white;
+    padding: 2.5rem 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 520px;
+    text-align: center;
+}
+
+.status-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.status-loading {
+    color: var(--primary-color);
+    animation: spin 1.2s linear infinite;
+}
+
+.status-success {
+    color: var(--success);
+}
+
+.status-error {
+    color: var(--danger);
+}
+
+.status-form {
+    color: var(--primary-color);
+}
+
+.action-title {
+    font-size: 1.7rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-color);
+}
+
+.action-message {
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.action-content {
+    margin-top: 1rem;
+    text-align: left;
+}
+
+.status-message {
+    font-size: 0.875rem;
+    margin-top: 0.75rem;
+}
+
+.status-message[hidden] {
+    display: none;
+}
+
+.status-message--error {
+    color: var(--danger);
+}
+
+.status-message--success {
+    color: var(--success);
+}
+
+.action-buttons {
+    margin-top: 1.25rem;
+}
+
+.action-buttons .btn {
+    width: 100%;
+}
+
+.action-button-secondary {
+    margin-top: 10px;
+}
+
+.password-requirements--visible {
+    display: block;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}

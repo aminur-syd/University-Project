@@ -4,31 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review Claims - Staff | World University of Bangladesh (WUB)</title>
+    <title>Review Claims - Admin | World University of Bangladesh (WUB)</title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico?v=20260222">
     <link rel="icon" type="image/png" sizes="32x32" href="../assets/images/favicon-32x32.png?v=20260222">
     <link rel="apple-touch-icon" sizes="180x180" href="../assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20260302-03">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20260404-01">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260404-01">
 </head>
 
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="../index.html" class="logo">
+            <a href="../index.html" class="logo logo-title">
                 <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
-                <span
-                    style="font-size: 0.8rem; background: var(--danger); color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle;">ADMIN</span>
+                <span class="role-badge role-badge--admin">ADMIN</span>
             </a>
             <div class="nav-links">
-                <div id="user-links" style="display: none;">
-                    <a href="dashboard.html" id="dashboard-link">Dashboard</a>
-                    <span id="welcome-msg" style="font-weight: 600; color: var(--text-color);"></span>
-                    <button id="logout-btn" class="btn btn-outline">Logout</button>
-                </div>
+                <span class="dashboard-nav-welcome">Welcome, <span id="user-name">Admin</span></span>
+                <button id="logout-btn" class="btn btn-outline btn-outline-dark">Logout</button>
             </div>
         </div>
     </nav>
@@ -58,7 +54,7 @@
         <div class="container footer-grid">
             <div class="footer-col">
                 <h3>
-                    <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img" style="height: 50px;">
+                    <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
                 </h3>
                 <p>Helping the World University of Bangladesh (WUB) community track lost belongings efficiently and securely.</p>
                 <div class="social-links">
@@ -96,9 +92,11 @@
         </div>
     </footer>
 
-    <script type="module" src="../assets/js/firebase-config.js"></script>
-    <script type="module" src="../assets/js/auth.js"></script>
-    <script type="module" src="../assets/js/staff.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="../assets/js/emailjs-init.js?v=20260404-01"></script>
+    <script type="module" src="../assets/js/firebase-config.js?v=20260404-01"></script>
+    <script type="module" src="../assets/js/auth.js?v=20260404-01"></script>
+    <script type="module" src="../assets/js/staff.js?v=20260404-01"></script>
 </body>
 
 </html>

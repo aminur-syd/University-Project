@@ -9,24 +9,22 @@
     <link rel="icon" type="image/png" sizes="32x32" href="../assets/images/favicon-32x32.png?v=20260222">
     <link rel="apple-touch-icon" sizes="180x180" href="../assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20260302-03">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20260404-01">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260404-01">
 </head>
 
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="../index.html" class="logo">
+            <a href="../index.html" class="logo logo-title">
                 <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
-                <span
-                    style="font-size: 0.8rem; background: var(--danger); color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle;">ADMIN</span>
+                <span class="role-badge role-badge--admin">ADMIN</span>
             </a>
             <div class="nav-links">
-                <span style="font-weight: 600;">Welcome, <span id="user-name">Admin</span></span>
-                <button id="logout-btn" class="btn btn-outline"
-                    style="color: var(--text-color); border-color: var(--text-color);">Logout</button>
+                <span class="dashboard-nav-welcome">Welcome, <span id="user-name">Admin</span></span>
+                <button id="logout-btn" class="btn btn-outline btn-outline-dark">Logout</button>
             </div>
         </div>
     </nav>
@@ -52,9 +50,7 @@
                     <div class="stat-info">
                         <h3 id="total-users">...</h3>
                         <p>Total Users</p>
-                        <!-- Add secondary info text underneath -->
-                        <span style="font-size: 0.8rem; color: var(--success); font-weight: 500;"><i
-                                class="fas fa-users"></i> Registered Community</span>
+                        <span class="stat-meta"><i class="fas fa-users"></i> Registered Community</span>
                     </div>
                     <div class="stat-icon"><i class="fas fa-users-cog"></i></div>
                 </div>
@@ -63,10 +59,11 @@
                     <div class="stat-info">
                         <h3 id="total-items">...</h3>
                         <p>Total Items Status</p>
-                        <div style="font-size: 0.85rem; margin-top: 5px; color: var(--text-light); font-weight: 600;">
-                            <span style="color: var(--danger);"><i class="fas fa-search"></i> <span
-                                    id="lost-items-count">0</span> Lost</span> &nbsp;|&nbsp;
-                            <span style="color: var(--success);"><i class="fas fa-check-circle"></i> <span
+                        <div class="stat-breakdown">
+                            <span class="stat-breakdown__item--danger"><i class="fas fa-search"></i> <span
+                                    id="lost-items-count">0</span> Lost</span>
+                            <span>|</span>
+                            <span class="stat-breakdown__item--success"><i class="fas fa-check-circle"></i> <span
                                     id="found-items-count">0</span> Found</span>
                         </div>
                     </div>
@@ -77,9 +74,7 @@
                     <div class="stat-info">
                         <h3 id="pending-posts-count">...</h3>
                         <p>Pending Moderation</p>
-                        <a href="review-posts.html"
-                            style="font-size: 0.85rem; color: var(--primary-color); text-decoration: none; font-weight: 600; display: inline-block; margin-top: 5px;">Review
-                            Now <i class="fas fa-arrow-right"></i></a>
+                        <a href="review-posts.html" class="stat-link">Review Now <i class="fas fa-arrow-right"></i></a>
                     </div>
                     <div class="stat-icon"><i class="fas fa-shield-alt"></i></div>
                 </div>
@@ -94,21 +89,16 @@
             </div>
 
             <!-- Bottom Section Layout (2 columns) -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
-
-                <!-- Left Col: Recent Pending Items -->
-                <div class="table-container" style="padding: 24px;">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3
-                            style="font-size: 1.25rem; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-clock" style="color: var(--primary-color);"></i> Action Needed (Latest)
+            <div class="dashboard-grid">
+                <section class="section-card">
+                    <div class="section-header-row">
+                        <h3 class="section-heading section-heading--tight">
+                            <i class="fas fa-clock text-primary"></i>
+                            Action Needed (Latest)
                         </h3>
-                        <a href="review-posts.html" class="btn btn-outline"
-                            style="padding: 6px 12px; font-size: 0.85rem; border: 1px solid var(--border-color); color: var(--text-color);">View
-                            All</a>
+                        <a href="review-posts.html" class="btn btn-outline btn-outline-dark btn-sm">View All</a>
                     </div>
-                    <div style="overflow-x: auto;">
+                    <div class="table-scroll">
                         <table class="users-table">
                             <thead>
                                 <tr>
@@ -117,58 +107,44 @@
                                 </tr>
                             </thead>
                             <tbody id="recent-pending-items">
-                                <tr>
-                                    <td colspan="2" style="text-align: center;">Loading recent tasks...</td>
+                                <tr class="table-row-message table-row-message--muted">
+                                    <td colspan="2">Loading recent tasks...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </section>
 
-                <!-- Right Col: System Quick Links / Status -->
-                <div class="table-container" style="padding: 24px;">
-                    <h3
-                        style="font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-sliders-h" style="color: var(--secondary-color);"></i> Quick Controls
-                    </h3>
-
-                    <div class="review-list" style="gap: 15px;">
-                        <a href="manage-users.html" class="stat-card"
-                            style="padding: 15px; grid-template-columns: auto 1fr auto; display: grid; gap: 15px; border-radius: 12px; box-shadow: none; border: 1px solid var(--border-color);">
-                            <div
-                                style="width: 45px; height: 45px; border-radius: 12px; background: rgba(67, 97, 238, 0.1); color: var(--primary-color); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                <section class="section-card">
+                    <h3 class="section-heading"><i class="fas fa-sliders-h text-secondary"></i> Quick Controls</h3>
+                    <div class="card-link-grid">
+                        <a href="manage-users.html" class="quick-link-card">
+                            <div class="quick-link-card__icon quick-link-card__icon--primary">
                                 <i class="fas fa-user-shield"></i>
                             </div>
-                            <div style="display: flex; flex-direction: column; justify-content: center;">
-                                <span style="font-weight: 600; color: #111827;">Role Management</span>
-                                <span style="font-size: 0.8rem; color: var(--text-light);">Assign admin & staff
-                                    roles</span>
+                            <div class="quick-link-card__copy">
+                                <span class="quick-link-card__title">Role Management</span>
+                                <span class="quick-link-card__text">Assign admin & staff roles</span>
                             </div>
-                            <div
-                                style="display: flex; align-items: center; color: var(--border-color); font-size: 1.2rem;">
+                            <div class="quick-link-card__arrow">
                                 <i class="fas fa-chevron-right"></i>
                             </div>
                         </a>
 
-                        <a href="logs.html" class="stat-card"
-                            style="padding: 15px; grid-template-columns: auto 1fr auto; display: grid; gap: 15px; border-radius: 12px; box-shadow: none; border: 1px solid var(--border-color);">
-                            <div
-                                style="width: 45px; height: 45px; border-radius: 12px; background: rgba(247, 37, 133, 0.1); color: var(--secondary-color); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                        <a href="logs.html" class="quick-link-card">
+                            <div class="quick-link-card__icon quick-link-card__icon--secondary">
                                 <i class="fas fa-file-alt"></i>
                             </div>
-                            <div style="display: flex; flex-direction: column; justify-content: center;">
-                                <span style="font-weight: 600; color: #111827;">System Logs</span>
-                                <span style="font-size: 0.8rem; color: var(--text-light);">View security audit
-                                    records</span>
+                            <div class="quick-link-card__copy">
+                                <span class="quick-link-card__title">System Logs</span>
+                                <span class="quick-link-card__text">View security audit records</span>
                             </div>
-                            <div
-                                style="display: flex; align-items: center; color: var(--border-color); font-size: 1.2rem;">
+                            <div class="quick-link-card__arrow">
                                 <i class="fas fa-chevron-right"></i>
                             </div>
                         </a>
                     </div>
-                </div>
-
+                </section>
             </div>
         </main>
     </div>
@@ -178,7 +154,7 @@
         <div class="container footer-grid">
             <div class="footer-col">
                 <h3>
-                    <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img" style="height: 50px;">
+                    <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
                 </h3>
                 <p>Helping the World University of Bangladesh (WUB) community track lost belongings efficiently and securely.</p>
                 <div class="social-links">
@@ -216,9 +192,9 @@
         </div>
     </footer>
 
-    <script type="module" src="../assets/js/firebase-config.js"></script>
-    <script type="module" src="../assets/js/auth.js"></script>
-    <script type="module" src="../assets/js/admin.js"></script>
+    <script type="module" src="../assets/js/firebase-config.js?v=20260404-01"></script>
+    <script type="module" src="../assets/js/auth.js?v=20260404-01"></script>
+    <script type="module" src="../assets/js/admin.js?v=20260404-01"></script>
 </body>
 
 </html>

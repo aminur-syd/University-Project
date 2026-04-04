@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20260222">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
-    <link rel="stylesheet" href="assets/css/style.css?v=20260331-01">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260404-01">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -29,9 +29,9 @@
                     <a href="login.html" class="btn btn-secondary">Login</a>
                     <a href="register.html" class="btn btn-primary">Register</a>
                 </div>
-                <div id="user-links" style="display: none;">
+                <div id="user-links" hidden>
                     <a href="#" id="dashboard-link">Dashboard</a>
-                    <span id="welcome-msg" style="font-weight: 600; color: var(--text-color);"></span>
+                    <span id="welcome-msg" class="nav-welcome"></span>
                     <button id="logout-btn" class="btn btn-outline">Logout</button>
                 </div>
             </div>
@@ -41,9 +41,8 @@
         </div>
     </nav>
 
-    <div class="container" style="margin-top: 40px;">
-        <div id="item-detail-container"
-            style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+    <div class="container page-shell">
+        <div id="item-detail-container" class="page-card">
             <div class="loading-spinner">Loading details...</div>
         </div>
     </div>
@@ -53,7 +52,7 @@
         <div class="container footer-grid">
             <div class="footer-col">
                 <h3>
-                    <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img" style="height: 50px;">
+                    <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
                 </h3>
                 <p>Helping the World University of Bangladesh (WUB) community track lost belongings efficiently and securely.</p>
                 <div class="social-links">
@@ -92,10 +91,10 @@
         </div>
     </footer>
 
-    <script type="module" src="assets/js/firebase-config.js"></script>
-    <script type="module" src="assets/js/auth.js"></script>
-    <script type="module" src="assets/js/posts.js"></script>
-    <script src="assets/js/public-nav.js"></script>
+    <script type="module" src="assets/js/firebase-config.js?v=20260404-01"></script>
+    <script type="module" src="assets/js/auth.js?v=20260404-01"></script>
+    <script type="module" src="assets/js/posts.js?v=20260404-01"></script>
+    <script src="assets/js/public-nav.js?v=20260404-01"></script>
 </body>
 
 </html>
