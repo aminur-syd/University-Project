@@ -1,4 +1,4 @@
-import { db, auth } from './firebase-config.js';
+import { db, auth, storage } from './firebase-config.js';
 import {
     collection,
     addDoc,
@@ -12,6 +12,11 @@ import {
     getDoc,
     limit
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import {
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const createPostForm = document.getElementById('create-post-form');
 const latestLostGrid = document.getElementById('latest-lost-grid');
@@ -22,6 +27,7 @@ const itemDetailContainer = document.getElementById('item-detail-container');
 
 const FALLBACK_CARD_IMAGE = 'https://via.placeholder.com/300x200?text=No+Image';
 const FALLBACK_DETAIL_IMAGE = 'https://via.placeholder.com/600x400?text=No+Image';
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 function setFormMessage(element, message, type = 'success') {
     if (!element) return;
@@ -44,6 +50,41 @@ function getReviewStatusClass(status) {
     if (status === 'approved') return 'status-label status-label--approved';
     if (status === 'rejected') return 'status-label status-label--rejected';
     return 'status-label status-label--pending';
+}
+
+function sanitizeFileName(fileName) {
+    return fileName
+        .toLowerCase()
+        .replace(/[^a-z0-9.-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+function validateImageFile(imageFile) {
+    if (!imageFile) {
+        return null;
+    }
+
+    if (!imageFile.type || !imageFile.type.startsWith('image/')) {
+        return 'Please select a valid image file.';
+    }
+
+    if (imageFile.size > MAX_IMAGE_SIZE_BYTES) {
+        return 'Image must be 5 MB or smaller.';
+    }
+
+    return null;
+}
+
+async function uploadItemImage(userId, imageFile) {
+    const safeFileName = sanitizeFileName(imageFile.name) || 'item-image';
+    const imageRef = ref(storage, `items/${userId}/${Date.now()}-${safeFileName}`);
+
+    await uploadBytes(imageRef, imageFile, {
+        contentType: imageFile.type
+    });
+
+    return getDownloadURL(imageRef);
 }
 
 async function renderItems(items, container) {
@@ -126,30 +167,24 @@ if (createPostForm) {
         const imageFile = document.getElementById('image').files[0];
         const submitBtn = createPostForm.querySelector('button[type="submit"]');
         const submitMessage = document.getElementById('submit-message');
+        const imageValidationError = validateImageFile(imageFile);
+
+        setFormMessage(submitMessage, '', 'success');
+
+        if (imageValidationError) {
+            setFormMessage(submitMessage, imageValidationError, 'error');
+            return;
+        }
 
         submitBtn.disabled = true;
         submitBtn.textContent = 'Posting...';
 
         try {
-            const imgbbApiKey = 'b7d7a635920b14b3b0a9868f055eb0b9';
             let imageUrl = null;
 
             if (imageFile) {
                 submitBtn.textContent = 'Uploading Image...';
-                const formData = new FormData();
-                formData.append('image', imageFile);
-
-                const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-
-                if (!result.success) {
-                    throw new Error('ImgBB Upload Failed: ' + (result.error?.message || 'Unknown error'));
-                }
-
-                imageUrl = result.data.url;
+                imageUrl = await uploadItemImage(user.uid, imageFile);
             }
 
             submitBtn.textContent = 'Saving Details...';
@@ -201,6 +236,8 @@ if (createPostForm) {
             let errorMessage = 'Error: ' + error.message;
             if (error.code === 'storage/unauthorized') {
                 errorMessage = 'Error: Permission Denied. Please check your Firebase Storage Rules.';
+            } else if (error.code === 'storage/invalid-format') {
+                errorMessage = 'Error: Please upload a valid image file.';
             }
 
             setFormMessage(submitMessage, errorMessage, 'error');

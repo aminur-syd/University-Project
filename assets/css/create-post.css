@@ -23,6 +23,13 @@
     grid-column: 1 / -1;
 }
 
+.form-help {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--text-light);
+    font-size: 0.875rem;
+}
+
 @media (max-width: 700px) {
     .form-grid {
         grid-template-columns: 1fr;
