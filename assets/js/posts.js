@@ -17,6 +17,9 @@ import {
     uploadBytes,
     getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const createPostForm = document.getElementById('create-post-form');
 const latestLostGrid = document.getElementById('latest-lost-grid');
@@ -28,6 +31,16 @@ const itemDetailContainer = document.getElementById('item-detail-container');
 const FALLBACK_CARD_IMAGE = 'https://via.placeholder.com/300x200?text=No+Image';
 const FALLBACK_DETAIL_IMAGE = 'https://via.placeholder.com/600x400?text=No+Image';
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const FIREBASE_OPERATION_TIMEOUT_MS = 15000;
+
+let createPostCurrentUser = auth.currentUser;
+let hasCreatePostAuthResolved = !createPostForm;
+let resolveCreatePostAuthReady = () => {};
+const createPostAuthReady = createPostForm
+    ? new Promise((resolve) => {
+        resolveCreatePostAuthReady = resolve;
+    })
+    : Promise.resolve();
 
 function setFormMessage(element, message, type = 'success') {
     if (!element) return;
@@ -39,6 +52,36 @@ function setFormMessage(element, message, type = 'success') {
     if (message) {
         element.classList.add(type === 'success' ? 'form-message--success' : 'form-message--error');
     }
+}
+
+function setSubmitButtonState(button, label, disabled) {
+    if (!button) return;
+    button.textContent = label;
+    button.disabled = disabled;
+}
+
+function createFirebaseError(code, message) {
+    const error = new Error(message);
+    error.code = code;
+    return error;
+}
+
+function withTimeout(promise, timeoutMs, timeoutError) {
+    return new Promise((resolve, reject) => {
+        const timeoutId = window.setTimeout(() => {
+            reject(timeoutError);
+        }, timeoutMs);
+
+        promise
+            .then((value) => {
+                window.clearTimeout(timeoutId);
+                resolve(value);
+            })
+            .catch((error) => {
+                window.clearTimeout(timeoutId);
+                reject(error);
+            });
+    });
 }
 
 function renderLoadingState(container, message) {
@@ -79,12 +122,72 @@ function validateImageFile(imageFile) {
 async function uploadItemImage(userId, imageFile) {
     const safeFileName = sanitizeFileName(imageFile.name) || 'item-image';
     const imageRef = ref(storage, `items/${userId}/${Date.now()}-${safeFileName}`);
+    const uploadTimeoutError = createFirebaseError(
+        'storage/timeout',
+        'Firebase Storage did not respond in time. Enable Storage in Firebase Console and verify the bucket name in firebase-config.js.'
+    );
 
-    await uploadBytes(imageRef, imageFile, {
+    await withTimeout(uploadBytes(imageRef, imageFile, {
         contentType: imageFile.type
-    });
+    }), FIREBASE_OPERATION_TIMEOUT_MS, uploadTimeoutError);
 
-    return getDownloadURL(imageRef);
+    return withTimeout(
+        getDownloadURL(imageRef),
+        FIREBASE_OPERATION_TIMEOUT_MS,
+        createFirebaseError(
+            'storage/url-timeout',
+            'Image upload finished, but Firebase did not return a download URL in time.'
+        )
+    );
+}
+
+function getCreatePostErrorMessage(error, stage) {
+    switch (error?.code) {
+        case 'auth/session-not-ready':
+            return 'Your session is still loading. Please wait a moment and try again.';
+        case 'auth/missing-user':
+        case 'auth/user-not-found':
+        case 'auth/invalid-user-token':
+        case 'unauthenticated':
+            return 'You must be logged in to post. Please sign in again.';
+        case 'storage/timeout':
+        case 'storage/url-timeout':
+        case 'storage/bucket-not-found':
+        case 'storage/project-not-found':
+        case 'storage/no-default-bucket':
+            return 'Firebase Storage is not ready for this project. Enable Storage in Firebase Console, then update the bucket name in firebase-config.js.';
+        case 'storage/unauthorized':
+            return 'Firebase Storage denied the image upload. Publish the latest storage.rules and try again.';
+        case 'storage/retry-limit-exceeded':
+            return 'The image upload timed out. Please try again after Firebase Storage is enabled and configured.';
+        case 'storage/invalid-format':
+            return 'Please upload a valid image file.';
+        case 'storage/canceled':
+            return 'The image upload was canceled before it finished.';
+        case 'permission-denied':
+            return stage === 'save'
+                ? 'Firestore denied the item save. Publish the latest firestore.rules and try again.'
+                : 'Firebase denied this operation. Please verify the current Firebase rules.';
+        case 'deadline-exceeded':
+        case 'unavailable':
+            return 'Firebase did not respond in time. Please try again.';
+        default:
+            if (stage === 'upload') {
+                return error?.message || 'Image upload failed. Please verify Firebase Storage is enabled and configured correctly.';
+            }
+            return error?.message || 'Posting failed. Please try again.';
+    }
+}
+
+async function createItemPost(itemData) {
+    return withTimeout(
+        addDoc(collection(db, 'items'), itemData),
+        FIREBASE_OPERATION_TIMEOUT_MS,
+        createFirebaseError(
+            'deadline-exceeded',
+            'Saving the item took too long. Please try again.'
+        )
+    );
 }
 
 async function renderItems(items, container) {
@@ -140,6 +243,35 @@ async function renderItems(items, container) {
 
 if (createPostForm) {
     const urlParams = new URLSearchParams(window.location.search);
+    const submitBtn = createPostForm.querySelector('button[type="submit"]');
+    const submitMessage = document.getElementById('submit-message');
+    const imageInput = document.getElementById('image');
+
+    setSubmitButtonState(submitBtn, 'Checking Session...', true);
+    setFormMessage(submitMessage, 'Checking your session...', 'success');
+
+    onAuthStateChanged(auth, (user) => {
+        hasCreatePostAuthResolved = true;
+        createPostCurrentUser = user;
+        resolveCreatePostAuthReady();
+
+        if (!user) {
+            setSubmitButtonState(submitBtn, 'Redirecting To Login...', true);
+            setFormMessage(submitMessage, 'Your session expired. Redirecting to login...', 'error');
+            return;
+        }
+
+        setSubmitButtonState(submitBtn, 'Submit Post', false);
+        setFormMessage(submitMessage, '', 'success');
+    }, (error) => {
+        console.error('Error resolving auth state for create-post form:', error);
+        hasCreatePostAuthResolved = true;
+        createPostCurrentUser = null;
+        resolveCreatePostAuthReady();
+        setSubmitButtonState(submitBtn, 'Submit Post', true);
+        setFormMessage(submitMessage, 'Could not verify your session. Please refresh the page and try again.', 'error');
+    });
+
     if (urlParams.has('type')) {
         const typeSelect = document.getElementById('type');
         const requestedType = urlParams.get('type');
@@ -148,12 +280,27 @@ if (createPostForm) {
         }
     }
 
+    if (imageInput) {
+        imageInput.addEventListener('change', () => {
+            const imageValidationError = validateImageFile(imageInput.files[0]);
+            setFormMessage(submitMessage, imageValidationError || '', imageValidationError ? 'error' : 'success');
+        });
+    }
+
     createPostForm.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        const user = auth.currentUser;
+        if (!createPostCurrentUser) {
+            setFormMessage(submitMessage, 'Checking your session. Please wait a moment and try again.', 'error');
+        }
+
+        if (!hasCreatePostAuthResolved) {
+            await createPostAuthReady;
+        }
+
+        const user = createPostCurrentUser;
         if (!user) {
-            alert('You must be logged in to post.');
+            setFormMessage(submitMessage, 'You must be logged in to post. Redirecting to login...', 'error');
             window.location.href = '../login.html';
             return;
         }
@@ -165,8 +312,6 @@ if (createPostForm) {
         const location = document.getElementById('location').value;
         const description = document.getElementById('description').value;
         const imageFile = document.getElementById('image').files[0];
-        const submitBtn = createPostForm.querySelector('button[type="submit"]');
-        const submitMessage = document.getElementById('submit-message');
         const imageValidationError = validateImageFile(imageFile);
 
         setFormMessage(submitMessage, '', 'success');
@@ -176,22 +321,24 @@ if (createPostForm) {
             return;
         }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Posting...';
+        setSubmitButtonState(submitBtn, 'Posting...', true);
+        let stage = 'save';
 
         try {
             let imageUrl = null;
 
             if (imageFile) {
-                submitBtn.textContent = 'Uploading Image...';
+                stage = 'upload';
+                setSubmitButtonState(submitBtn, 'Uploading Image...', true);
                 imageUrl = await uploadItemImage(user.uid, imageFile);
             }
 
-            submitBtn.textContent = 'Saving Details...';
+            stage = 'save';
+            setSubmitButtonState(submitBtn, 'Saving Details...', true);
 
             const initialReviewStatus = type === 'lost' ? 'approved' : 'pending';
 
-            await addDoc(collection(db, 'items'), {
+            await createItemPost({
                 type,
                 category,
                 title,
@@ -232,19 +379,12 @@ if (createPostForm) {
             }
         } catch (error) {
             console.error('Error creating post:', error);
-
-            let errorMessage = 'Error: ' + error.message;
-            if (error.code === 'storage/unauthorized') {
-                errorMessage = 'Error: Permission Denied. Please check your Firebase Storage Rules.';
-            } else if (error.code === 'storage/invalid-format') {
-                errorMessage = 'Error: Please upload a valid image file.';
-            }
-
+            const errorMessage = getCreatePostErrorMessage(error, stage);
             setFormMessage(submitMessage, errorMessage, 'error');
-            alert(errorMessage + '\n\nSee debugging guide for help.');
         } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit Post';
+            if (createPostCurrentUser) {
+                setSubmitButtonState(submitBtn, 'Submit Post', false);
+            }
         }
     });
 }

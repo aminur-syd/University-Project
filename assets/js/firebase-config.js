@@ -20,6 +20,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
+const storageBucketUrl = firebaseConfig.storageBucket
+    ? `gs://${firebaseConfig.storageBucket}`
+    : undefined;
+const storage = storageBucketUrl
+    ? getStorage(app, storageBucketUrl)
+    : getStorage(app);
 
 export { auth, db, storage };
