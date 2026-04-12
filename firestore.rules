@@ -1,72 +1,90 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // User Helper Function
+
     function isUser() {
       return request.auth != null;
     }
-    
+
     function isStaff() {
-      return isUser() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin'];
+      return isUser() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin'];
     }
 
     function isAdmin() {
-      return isUser() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isUser() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Users Collection
+    function isItemOwner(itemData) {
+      return isUser() && itemData.createdBy == request.auth.uid;
+    }
+
+    function isPublicApprovedActiveItem(itemData) {
+      return itemData.reviewStatus == 'approved' && itemData.status == 'active';
+    }
+
     match /users/{userId} {
-      allow read: if true; 
-      allow create: if isUser() && request.auth.uid == userId; 
+      allow read: if true;
+      allow create: if isUser() && request.auth.uid == userId;
       allow update: if (isUser() && request.auth.uid == userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
-    // Items Collection
     match /items/{itemId} {
-      // 1. Anyone can read 'approved' items
-      // 2. Staff/Admins can read any item (including pending/rejected)
-      // 3. The user who created the item can read it regardless of status
-      allow read: if resource.data.reviewStatus == 'approved' 
-                  || isStaff() 
-                  || (isUser() && resource.data.createdBy == request.auth.uid);
-      
-      // Users can create items
-      allow create: if isUser();
-      
-      // Users can update their own pending items? Or only staff can update status
-      allow update: if (isUser() && resource.data.createdBy == request.auth.uid && request.resource.data.reviewStatus == resource.data.reviewStatus) || isStaff();
-      
+      allow read: if isPublicApprovedActiveItem(resource.data) ||
+        isStaff() ||
+        isItemOwner(resource.data);
+
+      allow create: if isUser() && request.resource.data.createdBy == request.auth.uid;
+
+      allow update: if isStaff();
+
       allow delete: if isAdmin();
+
+      match /comments/{commentId} {
+        function parentItem() {
+          return get(/databases/$(database)/documents/items/$(itemId));
+        }
+
+        allow read: if isPublicApprovedActiveItem(parentItem().data) ||
+          isStaff() ||
+          isItemOwner(parentItem().data);
+
+        allow create: if isUser() &&
+          request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.status == 'visible' &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.creatorName is string &&
+          parentItem().data.type == 'found' &&
+          parentItem().data.reviewStatus == 'approved' &&
+          parentItem().data.status == 'active';
+
+        allow update, delete: if isAdmin();
+      }
     }
 
-    // Claims Collection
     match /claims/{claimId} {
       allow read: if (isUser() && resource.data.claimerUid == request.auth.uid) || isStaff();
       allow create: if isUser();
-      allow update: if isStaff(); // Only staff updates status
+      allow update: if isStaff();
       allow delete: if isAdmin();
     }
 
-    // Mail Collection (Firebase Email Extension)
     match /mail/{mailId} {
-      allow create: if isUser(); // Users can trigger emails
-      allow read, update, delete: if false; // Deny all other access
+      allow create: if isUser();
+      allow read, update, delete: if false;
     }
 
-    // Chats Collection (Handover process)
     match /chats/{chatId} {
-      // Users can only read/update their own chats. Staff can read/update all chats.
-      // Admin can delete chats.
       allow create: if isUser() && request.resource.data.userId == request.auth.uid;
       allow read, update: if isStaff() || (isUser() && resource.data.userId == request.auth.uid);
       allow delete: if isAdmin();
-      
-      // Messages Subcollection
+
       match /messages/{messageId} {
-        // Only involved parties can read/write messages
-        allow read, create: if isStaff() || (isUser() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid);
+        allow read, create: if isStaff() ||
+          (isUser() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid);
         allow update, delete: if isAdmin();
       }
     }

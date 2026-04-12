@@ -10,7 +10,8 @@ import {
     updateDoc,
     serverTimestamp,
     getDoc,
-    limit
+    limit,
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
     ref,
@@ -27,6 +28,13 @@ const latestFoundGrid = document.getElementById('latest-found-grid');
 const itemsGrid = document.getElementById('items-grid');
 const myPostsList = document.getElementById('my-posts-list');
 const itemDetailContainer = document.getElementById('item-detail-container');
+const itemCommentsSection = document.getElementById('item-comments-section');
+const commentsList = document.getElementById('comments-list');
+const commentsStatusMessage = document.getElementById('comments-status-message');
+const commentAccessMessage = document.getElementById('comment-access-message');
+const commentForm = document.getElementById('comment-form');
+const commentTextarea = document.getElementById('comment-text');
+const commentFormMessage = document.getElementById('comment-form-message');
 
 const FALLBACK_CARD_IMAGE = 'https://via.placeholder.com/300x200?text=No+Image';
 const FALLBACK_DETAIL_IMAGE = 'https://via.placeholder.com/600x400?text=No+Image';
@@ -35,12 +43,18 @@ const FIREBASE_OPERATION_TIMEOUT_MS = 15000;
 
 let createPostCurrentUser = auth.currentUser;
 let hasCreatePostAuthResolved = !createPostForm;
-let resolveCreatePostAuthReady = () => {};
+let resolveCreatePostAuthReady = () => { };
 const createPostAuthReady = createPostForm
     ? new Promise((resolve) => {
         resolveCreatePostAuthReady = resolve;
     })
     : Promise.resolve();
+
+let itemDetailCurrentUser = auth.currentUser;
+let itemDetailCurrentUserRole = null;
+let itemDetailCurrentItem = null;
+let unsubscribeItemDetail = null;
+let unsubscribeItemComments = null;
 
 function setFormMessage(element, message, type = 'success') {
     if (!element) return;
@@ -119,6 +133,88 @@ function validateImageFile(imageFile) {
     return null;
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatDateTime(timestamp) {
+    if (!timestamp?.toDate) {
+        return 'Just now';
+    }
+
+    return timestamp.toDate().toLocaleString();
+}
+
+function getSafeDisplayNameFromUser(user) {
+    if (!user) return 'User';
+
+    const displayName = (user.displayName || '').trim();
+    if (displayName) {
+        return displayName;
+    }
+
+    if (user.email) {
+        const prefix = user.email.split('@')[0];
+        return prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : 'User';
+    }
+
+    return 'User';
+}
+
+function isStaffRole(role) {
+    return role === 'staff' || role === 'admin';
+}
+
+function isPublicVisibleItem(item) {
+    return item?.status === 'active' && item?.reviewStatus === 'approved';
+}
+
+function isCommentableFoundItem(item) {
+    return item?.type === 'found' && isPublicVisibleItem(item);
+}
+
+function canViewerReadItem(item, user, role) {
+    if (!item) {
+        return false;
+    }
+
+    if (isPublicVisibleItem(item)) {
+        return true;
+    }
+
+    if (isStaffRole(role)) {
+        return true;
+    }
+
+    return Boolean(user && item.createdBy === user.uid);
+}
+
+function canViewerResolveItem(item, role) {
+    return Boolean(item && item.status === 'active' && isStaffRole(role));
+}
+
+async function resolveUserRole(user) {
+    if (!user) {
+        return null;
+    }
+
+    try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+            return userDoc.data().role || 'user';
+        }
+    } catch (error) {
+        console.error('Error resolving user role:', error);
+    }
+
+    return 'user';
+}
+
 async function uploadItemImage(userId, imageFile) {
     const safeFileName = sanitizeFileName(imageFile.name) || 'item-image';
     const imageRef = ref(storage, `items/${userId}/${Date.now()}-${safeFileName}`);
@@ -191,22 +287,17 @@ async function createItemPost(itemData) {
 }
 
 async function renderItems(items, container) {
+    if (!container) return;
+
     container.innerHTML = '';
     if (!items.length) {
         container.innerHTML = '<p>No items found.</p>';
         return;
     }
 
-    let isStaff = false;
+    let currentUserRole = null;
     if (auth.currentUser) {
-        try {
-            const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-            if (userDoc.exists() && ['staff', 'admin'].includes(userDoc.data().role)) {
-                isStaff = true;
-            }
-        } catch (error) {
-            console.error('Error checking role for render', error);
-        }
+        currentUserRole = await resolveUserRole(auth.currentUser);
     }
 
     items.forEach((docSnap) => {
@@ -214,30 +305,410 @@ async function renderItems(items, container) {
         const card = document.createElement('div');
         card.className = 'item-card';
 
-        let displayLocation = item.location;
-        let displayDate = item.date;
+        let displayLocation = item.location || 'Location not provided';
+        let displayDate = item.date || 'Date not provided';
 
-        if (item.type === 'found' && !isStaff && item.status !== 'resolved') {
+        if (item.type === 'found' && !isStaffRole(currentUserRole) && item.status !== 'resolved') {
             displayLocation = 'Location Hidden for Security';
             displayDate = 'Date Hidden';
         }
 
         const badgeClass = item.type === 'lost' ? 'badge-lost' : 'badge-found';
         const imageUrl = item.imageUrl || FALLBACK_CARD_IMAGE;
+        const itemTitle = escapeHtml(item.title || 'Untitled Item');
 
         card.innerHTML = `
             <div class="item-media">
-                <img class="item-image" src="${imageUrl}" alt="${item.title}">
-                <span class="item-badge ${badgeClass}">${item.type}</span>
+                <img class="item-image" src="${escapeHtml(imageUrl)}" alt="${itemTitle}">
+                <span class="item-badge ${badgeClass}">${escapeHtml(item.type || 'item')}</span>
             </div>
             <div class="item-content">
-                <h3 class="item-title">${item.title}</h3>
-                <p class="item-location"><i class="fas fa-map-marker-alt"></i> ${displayLocation}</p>
-                <p class="item-date"><i class="far fa-calendar-alt"></i> ${displayDate}</p>
+                <h3 class="item-title">${itemTitle}</h3>
+                <p class="item-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(displayLocation)}</p>
+                <p class="item-date"><i class="far fa-calendar-alt"></i> ${escapeHtml(displayDate)}</p>
                 <a href="item-details.html?id=${docSnap.id}" class="btn btn-outline item-card__action">View Details</a>
             </div>
         `;
         container.appendChild(card);
+    });
+}
+
+function renderCommentList(commentDocs) {
+    if (!commentsList) return;
+
+    if (!commentDocs.length) {
+        commentsList.innerHTML = '<p class="item-comments-empty">No comments yet. Add a helpful hint if you know something about this item.</p>';
+        return;
+    }
+
+    commentsList.innerHTML = commentDocs.map((commentDoc) => {
+        const comment = commentDoc.data();
+        const authorName = escapeHtml(comment.creatorName || 'User');
+        const commentText = escapeHtml(comment.text || '');
+        const createdAt = escapeHtml(formatDateTime(comment.createdAt));
+
+        return `
+            <article class="comment-item">
+                <div class="comment-item__meta">
+                    <strong>${authorName}</strong>
+                    <span>${createdAt}</span>
+                </div>
+                <p class="comment-item__text">${commentText}</p>
+            </article>
+        `;
+    }).join('');
+}
+
+function showCommentsSection(visible) {
+    if (!itemCommentsSection) return;
+    itemCommentsSection.hidden = !visible;
+}
+
+function resetCommentComposer() {
+    if (commentTextarea) {
+        commentTextarea.value = '';
+    }
+
+    setFormMessage(commentFormMessage, '', 'success');
+}
+
+function setCommentComposerState({ enabled, accessMessage = '', accessType = 'success' }) {
+    if (commentTextarea) {
+        commentTextarea.disabled = !enabled;
+    }
+
+    const submitButton = commentForm?.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = !enabled;
+    }
+
+    setFormMessage(commentAccessMessage, accessMessage, accessType);
+}
+
+function stopCommentsSubscription() {
+    if (unsubscribeItemComments) {
+        unsubscribeItemComments();
+        unsubscribeItemComments = null;
+    }
+}
+
+function renderItemDetailMessage(message) {
+    if (!itemDetailContainer) return;
+
+    itemDetailContainer.innerHTML = `
+        <div class="item-detail-empty-state">
+            <p>${escapeHtml(message)}</p>
+        </div>
+    `;
+}
+
+function getResolvedMessage(item) {
+    if (item?.status !== 'resolved') {
+        return '';
+    }
+
+    const handedOverTo = item.handedOverTo
+        ? ` Handed over to ${escapeHtml(item.handedOverTo)}.`
+        : '';
+
+    return `
+        <div class="item-status-banner item-status-banner--resolved">
+            <span class="item-status-banner__badge">Handed Over</span>
+            <p>This item has already been resolved through the official handover flow.${handedOverTo}</p>
+        </div>
+    `;
+}
+
+function getItemAvailabilityCopy(item) {
+    if (item?.status === 'resolved') {
+        return 'This item has already been handed over.';
+    }
+
+    if (item?.reviewStatus !== 'approved') {
+        return 'This item is not publicly available for new claims or discussion yet.';
+    }
+
+    if (item?.status !== 'active') {
+        return 'This item is not currently available for new claims or discussion.';
+    }
+
+    return '';
+}
+
+function renderItemDetail(item) {
+    if (!itemDetailContainer) return;
+
+    const isPublicItem = isPublicVisibleItem(item);
+    const canResolveItem = canViewerResolveItem(item, itemDetailCurrentUserRole);
+    const buttonText = item.type === 'found' ? 'Claim My Product' : 'I Found This!';
+    const isClaimAvailable = isPublicItem && item.status === 'active';
+    const imageUrl = item.imageUrl || FALLBACK_DETAIL_IMAGE;
+    const badgeClass = item.type === 'lost' ? 'badge-lost' : 'badge-found';
+    const detailStatusClass = getReviewStatusClass(item.reviewStatus);
+    const availabilityCopy = getItemAvailabilityCopy(item);
+    const reviewStatusMarkup = !isPublicItem || isStaffRole(itemDetailCurrentUserRole)
+        ? `<span class="${detailStatusClass}">Review: ${escapeHtml(item.reviewStatus || 'pending')}</span>`
+        : '';
+    const activeStatusMarkup = item.status === 'resolved'
+        ? '<span class="status-pill status-pill--success">Resolved</span>'
+        : '<span class="status-pill status-pill--info">Active</span>';
+    const staffResolveMarkup = canResolveItem
+        ? `
+            <form id="resolve-item-form" class="item-resolve-form">
+                <label for="handed-over-to" class="item-resolve-form__label">Handed Over To (optional)</label>
+                <input
+                    id="handed-over-to"
+                    name="handedOverTo"
+                    type="text"
+                    maxlength="120"
+                    class="filter-input item-resolve-form__input"
+                    placeholder="Student name, ID, or notes"
+                >
+                <div class="item-resolve-form__actions">
+                    <button type="submit" class="btn btn-outline btn-outline-success">Mark As Handed Over</button>
+                    <p id="resolve-item-message" class="form-message" hidden></p>
+                </div>
+            </form>
+        `
+        : '';
+
+    itemDetailContainer.innerHTML = `
+        <div class="item-detail-layout">
+            <div class="item-detail-media">
+                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title || 'Item image')}" class="item-detail-image">
+            </div>
+            <div class="item-detail-summary">
+                <span class="item-badge item-detail-badge ${badgeClass}">${escapeHtml((item.type || 'item').toUpperCase())}</span>
+                <h1 class="item-detail-title">${escapeHtml(item.title || 'Untitled Item')}</h1>
+                ${getResolvedMessage(item)}
+                <p class="item-detail-description">${escapeHtml(item.description || 'No description provided.')}</p>
+                <div class="item-detail-meta">
+                    <p><strong>Category:</strong> ${escapeHtml(item.category || 'Not provided')}</p>
+                    <p><strong>Location:</strong> ${escapeHtml(item.location || 'Not provided')}</p>
+                    <p><strong>Date:</strong> ${escapeHtml(item.date || 'Not provided')}</p>
+                    <p><strong>Posted By:</strong> ${escapeHtml(item.creatorName || 'Unknown User')}</p>
+                </div>
+                <div class="item-detail-status-row">
+                    ${reviewStatusMarkup}
+                    ${activeStatusMarkup}
+                </div>
+                <div class="item-detail-actions">
+                    <button id="claim-btn" class="btn btn-primary" ${isClaimAvailable ? '' : 'disabled'}>${escapeHtml(isClaimAvailable ? buttonText : 'Not Available For Claims')}</button>
+                </div>
+                ${availabilityCopy ? `<p class="item-detail-note">${escapeHtml(availabilityCopy)}</p>` : ''}
+                ${staffResolveMarkup}
+            </div>
+        </div>
+    `;
+
+    const claimBtn = document.getElementById('claim-btn');
+    if (claimBtn && isClaimAvailable) {
+        claimBtn.addEventListener('click', async () => {
+            if (!auth.currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (!itemDetailCurrentItem || !isPublicVisibleItem(itemDetailCurrentItem)) {
+                alert('This item is no longer available for claims.');
+                return;
+            }
+
+            if (auth.currentUser.uid === item.createdBy) {
+                alert('You cannot claim your own item.');
+                return;
+            }
+
+            try {
+                claimBtn.textContent = 'Initiating Secure Chat...';
+                claimBtn.disabled = true;
+
+                const chatRef = await addDoc(collection(db, 'chats'), {
+                    itemId: item.id,
+                    itemTitle: item.title,
+                    itemType: item.type,
+                    userId: auth.currentUser.uid,
+                    userName: getSafeDisplayNameFromUser(auth.currentUser),
+                    staffId: null,
+                    status: 'active',
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+
+                await addDoc(collection(db, 'mail'), {
+                    to: auth.currentUser.email,
+                    message: {
+                        subject: 'Claim Registered: ' + item.title,
+                        html: [
+                            '<div>',
+                            '<h2>Claim Initiated</h2>',
+                            `<p>Hello ${getSafeDisplayNameFromUser(auth.currentUser)},</p>`,
+                            `<p>You have initiated a claim for <b>${escapeHtml(item.title)}</b>.</p>`,
+                            '<p>A WUB staff member will connect with you shortly to verify your ownership/finding. Please log in to your dashboard to check your Active Chats.</p>',
+                            '<p>Thank you,<br>WUB Lost & Found Security Team</p>',
+                            '</div>'
+                        ].join('')
+                    }
+                });
+
+                window.location.href = 'user/chat.html?chatId=' + chatRef.id;
+            } catch (error) {
+                console.error('Error initiating handover process:', error);
+                alert('Failed to initiate claim. Please try again.');
+                claimBtn.textContent = buttonText;
+                claimBtn.disabled = false;
+            }
+        });
+    }
+
+    const resolveItemForm = document.getElementById('resolve-item-form');
+    if (resolveItemForm) {
+        resolveItemForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!itemDetailCurrentItem || !canViewerResolveItem(itemDetailCurrentItem, itemDetailCurrentUserRole)) {
+                return;
+            }
+
+            const submitButton = resolveItemForm.querySelector('button[type="submit"]');
+            const resolveMessage = document.getElementById('resolve-item-message');
+            const handedOverToInput = document.getElementById('handed-over-to');
+            const handedOverTo = handedOverToInput?.value.trim();
+
+            if (!confirm('Mark this item as officially handed over? This will stop new public comments and claims.')) {
+                return;
+            }
+
+            setSubmitButtonState(submitButton, 'Saving...', true);
+            setFormMessage(resolveMessage, '', 'success');
+
+            try {
+                const payload = {
+                    status: 'resolved',
+                    resolvedBy: itemDetailCurrentUser?.uid || null,
+                    resolvedAt: serverTimestamp()
+                };
+
+                if (handedOverTo) {
+                    payload.handedOverTo = handedOverTo;
+                }
+
+                await updateDoc(doc(db, 'items', itemDetailCurrentItem.id), payload);
+                alert('Item marked as handed over.');
+            } catch (error) {
+                console.error('Error resolving item:', error);
+                setFormMessage(resolveMessage, 'Could not update the item status. Please try again.', 'error');
+                setSubmitButtonState(submitButton, 'Mark As Handed Over', false);
+            }
+        });
+    }
+}
+
+function syncCommentsState(item) {
+    const canReadComments = Boolean(
+        item &&
+        item.type === 'found' &&
+        canViewerReadItem(item, itemDetailCurrentUser, itemDetailCurrentUserRole)
+    );
+
+    stopCommentsSubscription();
+    resetCommentComposer();
+
+    if (!canReadComments) {
+        showCommentsSection(false);
+        return;
+    }
+
+    showCommentsSection(true);
+    renderLoadingState(commentsList, 'Loading comments...');
+    setFormMessage(commentsStatusMessage, '', 'success');
+
+    if (isCommentableFoundItem(item)) {
+        if (!itemDetailCurrentUser) {
+            setCommentComposerState({
+                enabled: false,
+                accessMessage: 'Log in to add a discussion comment. Official ownership still goes through staff moderation.',
+                accessType: 'error'
+            });
+        } else {
+            setCommentComposerState({
+                enabled: true,
+                accessMessage: 'Comments are for discussion only. Official ownership is verified through staff moderation.',
+                accessType: 'success'
+            });
+        }
+    } else if (item.status === 'resolved') {
+        setCommentComposerState({
+            enabled: false,
+            accessMessage: 'This item has already been handed over. New comments are closed.',
+            accessType: 'error'
+        });
+    } else {
+        setCommentComposerState({
+            enabled: false,
+            accessMessage: 'Comments are available only on approved active found items.',
+            accessType: 'error'
+        });
+    }
+
+    const commentsQuery = query(
+        collection(db, 'items', item.id, 'comments'),
+        where('status', '==', 'visible'),
+        orderBy('createdAt', 'desc')
+    );
+
+    unsubscribeItemComments = onSnapshot(commentsQuery, (snapshot) => {
+        renderCommentList(snapshot.docs);
+    }, (error) => {
+        console.error('Error loading item comments:', error);
+        if (commentsList) {
+            commentsList.innerHTML = '<p class="item-comments-empty">Comments are not available right now.</p>';
+        }
+        setFormMessage(commentsStatusMessage, 'Could not load comments for this item.', 'error');
+    });
+}
+
+function subscribeToItemDetail(itemId) {
+    if (!itemDetailContainer || !itemId) {
+        return;
+    }
+
+    if (unsubscribeItemDetail) {
+        unsubscribeItemDetail();
+        unsubscribeItemDetail = null;
+    }
+
+    stopCommentsSubscription();
+    renderLoadingState(itemDetailContainer, 'Loading item details...');
+
+    unsubscribeItemDetail = onSnapshot(doc(db, 'items', itemId), (docSnap) => {
+        if (!docSnap.exists()) {
+            itemDetailCurrentItem = null;
+            renderItemDetailMessage('Item not found.');
+            showCommentsSection(false);
+            return;
+        }
+
+        const item = {
+            id: docSnap.id,
+            ...docSnap.data()
+        };
+
+        itemDetailCurrentItem = item;
+
+        if (!canViewerReadItem(item, itemDetailCurrentUser, itemDetailCurrentUserRole)) {
+            renderItemDetailMessage('This item is no longer publicly available or you do not have permission to view it.');
+            showCommentsSection(false);
+            return;
+        }
+
+        renderItemDetail(item);
+        syncCommentsState(item);
+    }, (error) => {
+        console.error('Error loading item details:', error);
+        itemDetailCurrentItem = null;
+        renderItemDetailMessage('This item is no longer publicly available or you do not have permission to view it.');
+        showCommentsSection(false);
     });
 }
 
@@ -347,7 +818,7 @@ if (createPostForm) {
                 date,
                 imageUrl,
                 createdBy: user.uid,
-                creatorName: user.displayName,
+                creatorName: getSafeDisplayNameFromUser(user),
                 reviewStatus: initialReviewStatus,
                 status: 'active',
                 createdAt: serverTimestamp()
@@ -433,12 +904,12 @@ if (latestLostGrid || latestFoundGrid || itemsGrid) {
         const searchInput = document.getElementById('search');
         const typeSelect = document.getElementById('type');
         const categorySelect = document.getElementById('category');
+        const urlParams = new URLSearchParams(window.location.search);
 
         renderLoadingState(itemsGrid, 'Loading items...');
 
         try {
-            const urlParams = new URLSearchParams(window.location.search);
-            const typeFilter = urlParams.get('type') || 'lost';
+            const typeFilter = urlParams.get('type') || 'all';
             const categoryFilter = urlParams.get('category') || 'all';
             const searchFilter = urlParams.get('search') || '';
 
@@ -449,6 +920,7 @@ if (latestLostGrid || latestFoundGrid || itemsGrid) {
             const itemsQuery = query(
                 collection(db, 'items'),
                 where('status', '==', 'active'),
+                where('reviewStatus', '==', 'approved'),
                 orderBy('createdAt', 'desc'),
                 limit(50)
             );
@@ -459,15 +931,17 @@ if (latestLostGrid || latestFoundGrid || itemsGrid) {
             if (typeFilter !== 'all') {
                 items = items.filter((item) => item.type === typeFilter);
             }
+
             if (categoryFilter !== 'all') {
                 items = items.filter((item) => item.category === categoryFilter);
             }
+
             if (searchFilter) {
                 const lowerSearch = searchFilter.toLowerCase();
                 items = items.filter((item) =>
-                    item.title.toLowerCase().includes(lowerSearch) ||
-                    (item.description && item.description.toLowerCase().includes(lowerSearch)) ||
-                    (item.location && item.location.toLowerCase().includes(lowerSearch))
+                    (item.title || '').toLowerCase().includes(lowerSearch) ||
+                    (item.description || '').toLowerCase().includes(lowerSearch) ||
+                    (item.location || '').toLowerCase().includes(lowerSearch)
                 );
             }
 
@@ -484,12 +958,12 @@ if (latestLostGrid || latestFoundGrid || itemsGrid) {
         if (filterForm && searchInput && categorySelect) {
             filterForm.onsubmit = (event) => {
                 event.preventDefault();
-                const newType = typeSelect ? typeSelect.value : 'lost';
+                const currentTypeFilter = typeSelect ? typeSelect.value : (urlParams.get('type') || 'all');
                 const newCategory = categorySelect.value;
-                const newSearch = searchInput.value;
+                const newSearch = searchInput.value.trim();
                 const newUrl = new URL(window.location);
 
-                if (newType !== 'all') newUrl.searchParams.set('type', newType);
+                if (currentTypeFilter !== 'all') newUrl.searchParams.set('type', currentTypeFilter);
                 else newUrl.searchParams.delete('type');
 
                 if (newCategory !== 'all') newUrl.searchParams.set('category', newCategory);
@@ -531,10 +1005,10 @@ async function fetchHomeStats() {
         };
 
         document.querySelectorAll('.stat-item').forEach((item) => {
-            const label = item.querySelector('p').textContent.trim();
+            const label = item.querySelector('p')?.textContent.trim();
             const counter = item.querySelector('.counter');
 
-            if (statMap[label] === undefined) {
+            if (!counter || statMap[label] === undefined) {
                 return;
             }
 
@@ -570,7 +1044,7 @@ if (document.querySelector('.stats-section')) {
 }
 
 if (myPostsList) {
-    auth.onAuthStateChanged(async (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (!user) return;
 
         try {
@@ -595,49 +1069,22 @@ if (myPostsList) {
                 const statusClass = getReviewStatusClass(item.reviewStatus);
                 const returnedBadge = item.status === 'resolved'
                     ? '<span class="status-pill status-pill--success">Returned</span>'
-                    : '';
-                const resolveButton = item.status !== 'resolved' && item.reviewStatus === 'approved'
-                    ? `<button class="btn btn-outline btn-outline-success mark-resolved-btn" data-id="${docSnap.id}">Mark as Returned</button>`
-                    : '';
+                    : '<span class="status-pill status-pill--info">Active</span>';
 
                 card.innerHTML = `
                     <div class="post-item__content">
-                        <h3 class="post-item__title">${item.title} (${item.type})</h3>
-                        <p>${item.date} - ${item.location}</p>
+                        <h3 class="post-item__title">${escapeHtml(item.title || 'Untitled Item')} (${escapeHtml(item.type || 'item')})</h3>
+                        <p>${escapeHtml(item.date || 'Date not provided')} - ${escapeHtml(item.location || 'Location not provided')}</p>
                         <div class="post-item__actions">
-                            <span class="${statusClass}">Status: ${item.reviewStatus}</span>
+                            <span class="${statusClass}">Status: ${escapeHtml(item.reviewStatus || 'pending')}</span>
                             ${returnedBadge}
                         </div>
                     </div>
                     <div class="post-item__actions">
-                        ${resolveButton}
                         <a href="../item-details.html?id=${docSnap.id}" class="btn btn-secondary">View</a>
                     </div>
                 `;
                 myPostsList.appendChild(card);
-            });
-
-            document.querySelectorAll('.mark-resolved-btn').forEach((button) => {
-                button.addEventListener('click', async (event) => {
-                    event.preventDefault();
-                    if (!confirm('Did you find this item/return it to its owner? This will mark it as returned on the site.')) {
-                        return;
-                    }
-
-                    try {
-                        const itemRef = doc(db, 'items', button.dataset.id);
-                        await updateDoc(itemRef, {
-                            status: 'resolved',
-                            resolvedBy: 'owner',
-                            resolvedAt: serverTimestamp()
-                        });
-                        alert('Item marked as returned!');
-                        window.location.reload();
-                    } catch (error) {
-                        console.error('Error updating status:', error);
-                        alert('Error: ' + error.message);
-                    }
-                });
             });
         } catch (error) {
             console.error(error);
@@ -650,93 +1097,66 @@ if (itemDetailContainer) {
     const urlParams = new URLSearchParams(window.location.search);
     const itemId = urlParams.get('id');
 
-    if (itemId) {
-        getDoc(doc(db, 'items', itemId)).then((docSnap) => {
-            if (!docSnap.exists()) {
-                itemDetailContainer.innerHTML = '<p>Item not found.</p>';
-                return;
-            }
-
-            const item = docSnap.data();
-            const buttonText = item.type === 'found' ? 'Claim My Product' : 'I Found This!';
-            const imageUrl = item.imageUrl || FALLBACK_DETAIL_IMAGE;
-            const badgeClass = item.type === 'lost' ? 'badge-lost' : 'badge-found';
-
-            itemDetailContainer.innerHTML = `
-                <div class="item-detail-layout">
-                    <div class="item-detail-media">
-                        <img src="${imageUrl}" alt="${item.title}" class="item-detail-image">
-                    </div>
-                    <div class="item-detail-summary">
-                        <span class="item-badge item-detail-badge ${badgeClass}">${item.type.toUpperCase()}</span>
-                        <h1 class="item-detail-title">${item.title}</h1>
-                        <p class="item-detail-description">${item.description}</p>
-                        <div class="item-detail-meta">
-                            <p><strong>Category:</strong> ${item.category}</p>
-                            <p><strong>Location:</strong> ${item.location}</p>
-                            <p><strong>Date:</strong> ${item.date}</p>
-                        </div>
-                        <button id="claim-btn" class="btn btn-primary">${buttonText}</button>
-                    </div>
-                </div>
-            `;
-
-            const claimBtn = document.getElementById('claim-btn');
-            if (!claimBtn) {
-                return;
-            }
-
-            claimBtn.addEventListener('click', async () => {
-                if (!auth.currentUser) {
-                    window.location.href = 'login.html';
-                    return;
-                }
-
-                if (auth.currentUser.uid === item.createdBy) {
-                    alert('You cannot claim your own item.');
-                    return;
-                }
-
-                try {
-                    claimBtn.textContent = 'Initiating Secure Chat...';
-                    claimBtn.disabled = true;
-
-                    const chatRef = await addDoc(collection(db, 'chats'), {
-                        itemId: docSnap.id,
-                        itemTitle: item.title,
-                        itemType: item.type,
-                        userId: auth.currentUser.uid,
-                        userName: auth.currentUser.displayName || 'Student',
-                        staffId: null,
-                        status: 'active',
-                        createdAt: serverTimestamp(),
-                        updatedAt: serverTimestamp()
-                    });
-
-                    await addDoc(collection(db, 'mail'), {
-                        to: auth.currentUser.email,
-                        message: {
-                            subject: 'Claim Registered: ' + item.title,
-                            html: [
-                                '<div>',
-                                '<h2>Claim Initiated</h2>',
-                                `<p>Hello ${auth.currentUser.displayName || 'Student'},</p>`,
-                                `<p>You have initiated a claim for <b>${item.title}</b>.</p>`,
-                                '<p>A WUB staff member will connect with you shortly to verify your ownership/finding. Please log in to your dashboard to check your Active Chats.</p>',
-                                '<p>Thank you,<br>WUB Lost & Found Security Team</p>',
-                                '</div>'
-                            ].join('')
-                        }
-                    });
-
-                    window.location.href = 'user/chat.html?chatId=' + chatRef.id;
-                } catch (error) {
-                    console.error('Error initiating handover process:', error);
-                    alert('Failed to initiate claim. Please try again.');
-                    claimBtn.textContent = buttonText;
-                    claimBtn.disabled = false;
-                }
-            });
+    if (!itemId) {
+        renderItemDetailMessage('Invalid item link.');
+        showCommentsSection(false);
+    } else {
+        onAuthStateChanged(auth, async (user) => {
+            itemDetailCurrentUser = user;
+            itemDetailCurrentUserRole = await resolveUserRole(user);
+            subscribeToItemDetail(itemId);
         });
     }
+}
+
+if (commentForm) {
+    commentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (!itemDetailCurrentItem || !itemDetailCurrentItem.id) {
+            setFormMessage(commentFormMessage, 'Item details are still loading. Please try again.', 'error');
+            return;
+        }
+
+        if (!itemDetailCurrentUser) {
+            setFormMessage(commentFormMessage, 'Please log in to add a comment.', 'error');
+            return;
+        }
+
+        if (!isCommentableFoundItem(itemDetailCurrentItem)) {
+            setFormMessage(commentFormMessage, 'Comments are only available on approved active found items.', 'error');
+            return;
+        }
+
+        const trimmedComment = commentTextarea?.value.trim() || '';
+        if (!trimmedComment) {
+            setFormMessage(commentFormMessage, 'Please enter a comment before submitting.', 'error');
+            return;
+        }
+
+        const submitButton = commentForm.querySelector('button[type="submit"]');
+        setSubmitButtonState(submitButton, 'Posting...', true);
+        setFormMessage(commentFormMessage, '', 'success');
+
+        try {
+            await addDoc(collection(db, 'items', itemDetailCurrentItem.id, 'comments'), {
+                text: trimmedComment,
+                createdBy: itemDetailCurrentUser.uid,
+                creatorName: getSafeDisplayNameFromUser(itemDetailCurrentUser),
+                createdAt: serverTimestamp(),
+                status: 'visible'
+            });
+
+            if (commentTextarea) {
+                commentTextarea.value = '';
+            }
+
+            setFormMessage(commentFormMessage, 'Comment posted successfully.', 'success');
+        } catch (error) {
+            console.error('Error posting comment:', error);
+            setFormMessage(commentFormMessage, 'Could not post your comment. Please try again.', 'error');
+        } finally {
+            setSubmitButtonState(submitButton, 'Post Comment', false);
+        }
+    });
 }

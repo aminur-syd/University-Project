@@ -187,11 +187,17 @@ if (handoverBtn) {
                 });
 
                 // 2. Mark the item as resolved
-                await updateDoc(doc(db, "items", currentChatDoc.itemId), {
+                const itemPayload = {
                     status: 'resolved',
                     resolvedBy: auth.currentUser.uid,
                     resolvedAt: serverTimestamp()
-                });
+                };
+
+                if (currentChatDoc.userName) {
+                    itemPayload.handedOverTo = currentChatDoc.userName;
+                }
+
+                await updateDoc(doc(db, "items", currentChatDoc.itemId), itemPayload);
 
                 // 3. Add system message
                 await addDoc(collection(db, "chats", currentChatId, "messages"), {

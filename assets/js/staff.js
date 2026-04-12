@@ -4,6 +4,7 @@ import {
     getDocs,
     query,
     where,
+    orderBy,
     doc,
     updateDoc,
     serverTimestamp
@@ -18,6 +19,12 @@ function getTypePill(type) {
     if (type === 'lost') return '<span class="type-pill type-pill--lost">LOST</span>';
     if (type === 'found') return '<span class="type-pill type-pill--found">FOUND</span>';
     return '<span class="type-pill type-pill--neutral">UNKNOWN</span>';
+}
+
+function getReviewStatusClass(status) {
+    if (status === 'approved') return 'status-label status-label--approved';
+    if (status === 'rejected') return 'status-label status-label--rejected';
+    return 'status-label status-label--pending';
 }
 
 function getClaimContext(claim) {
@@ -74,6 +81,7 @@ if (pendingPostsList) {
                 const item = docSnap.data();
                 const card = document.createElement('div');
                 card.className = 'post-item';
+                const reviewStatusClass = getReviewStatusClass(item.reviewStatus);
                 card.innerHTML = `
                     <div class="post-item__layout">
                         <img src="${item.imageUrl || 'https://via.placeholder.com/150'}" alt="Item Image" class="post-item__image">
@@ -81,6 +89,7 @@ if (pendingPostsList) {
                             <div class="post-item__title-row">
                                 <h3 class="post-item__title">${item.title}</h3>
                                 ${getTypePill(item.type)}
+                                <span class="${reviewStatusClass}">Review: ${item.reviewStatus || 'pending'}</span>
                             </div>
                             <p><strong>Posted by:</strong> ${item.creatorName || 'Unknown User'}</p>
                             <p>${item.description || 'No description provided.'}</p>
@@ -184,7 +193,7 @@ if (pendingClaimsList) {
                         </div>
                     </div>
                     <div class="claim-review-actions">
-                        <button class="btn btn-success approve-claim-btn" data-id="${docSnap.id}" data-item="${claim.itemId}">
+                        <button class="btn btn-success approve-claim-btn" data-id="${docSnap.id}" data-item="${claim.itemId}" data-claimer="${claim.claimerName || ''}">
                             <i class="fas fa-check"></i>
                             Approve & Mark Returned
                         </button>
@@ -198,7 +207,7 @@ if (pendingClaimsList) {
             });
 
             document.querySelectorAll('.approve-claim-btn').forEach((button) => {
-                button.addEventListener('click', () => updateClaimStatus(button.dataset.id, button.dataset.item, 'approved'));
+                button.addEventListener('click', () => updateClaimStatus(button.dataset.id, button.dataset.item, 'approved', button.dataset.claimer));
             });
 
             document.querySelectorAll('.reject-claim-btn').forEach((button) => {
@@ -248,7 +257,7 @@ if (pendingClaimsList) {
     fetchPendingClaims();
 }
 
-async function updateClaimStatus(claimId, itemId, status) {
+async function updateClaimStatus(claimId, itemId, status, claimerName = '') {
     if (!confirm(`Are you sure you want to ${status} this claim? This action cannot be undone.`)) {
         return;
     }
@@ -263,11 +272,17 @@ async function updateClaimStatus(claimId, itemId, status) {
 
         if (status === 'approved' && itemId) {
             const itemRef = doc(db, 'items', itemId);
-            await updateDoc(itemRef, {
+            const itemPayload = {
                 status: 'resolved',
                 resolvedByClaim: claimId,
                 resolvedAt: serverTimestamp()
-            });
+            };
+
+            if (claimerName) {
+                itemPayload.handedOverTo = claimerName;
+            }
+
+            await updateDoc(itemRef, itemPayload);
             alert('Claim approved! The item has been marked as RETURNED.');
         } else {
             alert(`Claim ${status} successfully.`);

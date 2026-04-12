@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon-32x32.png?v=20260222">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
-    <link rel="stylesheet" href="assets/css/style.css?v=20260404-01">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260413-01">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -45,6 +45,28 @@
         <div id="item-detail-container" class="page-card">
             <div class="loading-spinner">Loading details...</div>
         </div>
+
+        <section id="item-comments-section" class="page-card item-comments-card" hidden>
+            <div class="item-comments-card__header">
+                <h2>Discussion & Helpful Hints</h2>
+                <p class="item-comments-note">Comments are for discussion only. Official ownership is verified through staff moderation and the claim handover flow.</p>
+            </div>
+
+            <p id="comments-status-message" class="form-message" hidden></p>
+            <div id="comments-list" class="item-comments-list">
+                <div class="loading-spinner">Loading comments...</div>
+            </div>
+
+            <form id="comment-form" class="item-comments-form">
+                <label for="comment-text">Add a Comment</label>
+                <textarea id="comment-text" name="comment" rows="4" placeholder="Share a helpful clue, detail, or question about this found item."></textarea>
+                <div class="item-comments-form__actions">
+                    <button type="submit" class="btn btn-primary">Post Comment</button>
+                    <p id="comment-access-message" class="form-message" hidden></p>
+                </div>
+                <p id="comment-form-message" class="form-message" hidden></p>
+            </form>
+        </section>
     </div>
 
     <!-- Footer -->
@@ -93,7 +115,7 @@
 
     <script type="module" src="assets/js/firebase-config.js?v=20260412-03"></script>
     <script type="module" src="assets/js/auth.js?v=20260404-01"></script>
-    <script type="module" src="assets/js/posts.js?v=20260412-03"></script>
+    <script type="module" src="assets/js/posts.js?v=20260413-01"></script>
     <script src="assets/js/public-nav.js?v=20260404-01"></script>
 </body>
 
