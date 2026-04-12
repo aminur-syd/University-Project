@@ -201,13 +201,6 @@ if (pendingClaimsList) {
                                 View Original Post <i class="fas fa-external-link-alt"></i>
                             </a>
                         </p>
-
-                        <div class="claim-email-action">
-                            <button class="btn btn-outline btn-sm send-email-btn" data-email="${claim.claimerEmail}" data-name="${claim.claimerName}" data-item="${claim.itemTitle}" data-token="${claim.claimToken || 'N/A'}">
-                                <i class="fas fa-envelope"></i>
-                                Send Email
-                            </button>
-                        </div>
                     </div>
                     <div class="claim-review-actions">
                         <button class="btn btn-success approve-claim-btn" data-id="${docSnap.id}" data-item="${claim.itemId}" data-claimer="${claim.claimerName || ''}">
@@ -229,41 +222,6 @@ if (pendingClaimsList) {
 
             document.querySelectorAll('.reject-claim-btn').forEach((button) => {
                 button.addEventListener('click', () => updateClaimStatus(button.dataset.id, null, 'rejected'));
-            });
-
-            document.querySelectorAll('.send-email-btn').forEach((button) => {
-                button.addEventListener('click', () => {
-                    const serviceID = 'YOUR_SERVICE_ID';
-                    const templateID = 'YOUR_TEMPLATE_ID';
-
-                    if (serviceID === 'YOUR_SERVICE_ID') {
-                        alert('Please configure EmailJS Service ID and Template ID in assets/js/staff.js');
-                        return;
-                    }
-
-                    button.disabled = true;
-                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-                    const templateParams = {
-                        to_email: button.dataset.email,
-                        to_name: button.dataset.name,
-                        item_name: button.dataset.item,
-                        claim_token: button.dataset.token,
-                        message: `We received your claim for: ${button.dataset.item}. Your Token is: ${button.dataset.token}. Please reply with details.`
-                    };
-
-                    window.emailjs.send(serviceID, templateID, templateParams)
-                        .then(() => {
-                            alert('Email sent successfully!');
-                            button.innerHTML = '<i class="fas fa-check"></i> Sent';
-                        })
-                        .catch((error) => {
-                            console.error('EmailJS Error:', error);
-                            alert('Failed to send email. Check console for details.');
-                            button.disabled = false;
-                            button.innerHTML = '<i class="fas fa-envelope"></i> Send Email';
-                        });
-                });
             });
         } catch (error) {
             console.error('Error fetching pending claims:', error);
