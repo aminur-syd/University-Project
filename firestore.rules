@@ -25,7 +25,7 @@ service cloud.firestore {
     }
 
     function canReadItem(itemData) {
-      return isUser() && (
+      return (
         isItemOwner(itemData) ||
         isStaff() ||
         isApprovedActiveItem(itemData)
@@ -53,19 +53,48 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/items/$(itemId));
         }
 
-        allow read: if canReadItem(parentItem().data);
+        allow read: if
+          resource.data.status == 'visible' &&
+          parentItem().data.type == 'found' &&
+          canReadItem(parentItem().data);
 
         allow create: if isUser() &&
+          request.resource.data.keys().hasOnly(['text', 'createdBy', 'creatorName', 'createdAt', 'status']) &&
+          request.resource.data.createdBy is string &&
           request.resource.data.createdBy == request.auth.uid &&
           request.resource.data.status == 'visible' &&
           request.resource.data.text is string &&
           request.resource.data.text.size() > 0 &&
           request.resource.data.creatorName is string &&
+          request.resource.data.creatorName.size() > 0 &&
+          request.resource.data.createdAt == request.time &&
           parentItem().data.type == 'found' &&
           isApprovedActiveItem(parentItem().data);
 
         allow update, delete: if isAdmin();
       }
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+
+      allow create: if isUser() &&
+        request.resource.data.keys().hasAll(['type', 'message', 'actorUid', 'actorName', 'targetId', 'targetType', 'createdAt']) &&
+        request.resource.data.keys().hasOnly(['type', 'message', 'actorUid', 'actorName', 'targetId', 'targetType', 'createdAt', 'meta']) &&
+        request.resource.data.type is string &&
+        request.resource.data.type.size() > 0 &&
+        request.resource.data.message is string &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.actorUid == request.auth.uid &&
+        request.resource.data.actorName is string &&
+        request.resource.data.actorName.size() > 0 &&
+        request.resource.data.targetId is string &&
+        request.resource.data.targetType is string &&
+        request.resource.data.createdAt == request.time &&
+        (!('meta' in request.resource.data) || request.resource.data.meta is map);
+
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     match /claims/{claimId} {

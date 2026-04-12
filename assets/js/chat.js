@@ -1,4 +1,5 @@
 import { db, auth } from './firebase-config.js';
+import { writeAuditLog } from './audit-log.js';
 import {
     collection,
     doc,
@@ -204,6 +205,18 @@ if (handoverBtn) {
                     senderId: 'system',
                     text: `Staff has verified ownership and handed over the item. Chat is now closed.`,
                     createdAt: serverTimestamp()
+                });
+
+                await writeAuditLog({
+                    type: 'item_resolved',
+                    message: `Item ${currentChatDoc.itemTitle || currentChatDoc.itemId} was handed over and the chat was closed.`,
+                    targetId: currentChatDoc.itemId,
+                    targetType: 'item',
+                    meta: {
+                        chatId: currentChatId,
+                        handedOverTo: currentChatDoc.userName || '',
+                        source: 'chat'
+                    }
                 });
 
                 alert("Item marked as resolved and handed over!");

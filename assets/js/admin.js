@@ -1,4 +1,5 @@
 import { db } from './firebase-config.js';
+import { writeAuditLog } from './audit-log.js';
 import {
     collection,
     getDocs,
@@ -6,7 +7,8 @@ import {
     where,
     orderBy,
     updateDoc,
-    doc
+    doc,
+    limit
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const logsContainer = document.getElementById('logs-container');
@@ -24,6 +26,46 @@ const adminList = document.getElementById('admin-list');
 const staffList = document.getElementById('staff-list');
 const usersList = document.getElementById('users-list');
 const totalUsersBadge = document.getElementById('total-users-badge');
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatAuditTime(timestamp) {
+    if (!timestamp?.toDate) {
+        return 'Just now';
+    }
+
+    return timestamp.toDate().toLocaleString();
+}
+
+function formatAuditMeta(meta) {
+    if (!meta || typeof meta !== 'object') {
+        return '';
+    }
+
+    const entries = Object.entries(meta).filter(([, value]) => value !== null && value !== undefined && value !== '');
+    if (!entries.length) {
+        return '';
+    }
+
+    return entries
+        .map(([key, value]) => `${escapeHtml(key)}: ${escapeHtml(typeof value === 'object' ? JSON.stringify(value) : value)}`)
+        .join(' | ');
+}
+
+function renderLogsEmptyState(message, isError = false) {
+    if (!logsContainer) {
+        return;
+    }
+
+    logsContainer.innerHTML = `<div class="log-entry">${escapeHtml(isError ? `Error: ${message}` : message)}</div>`;
+}
 
 function renderTableMessage(message, colSpan, variant = 'muted') {
     const typeClass = variant === 'error' ? 'table-row-message--error' : 'table-row-message--muted';
@@ -47,6 +89,10 @@ function openRoleModal(userId, userName, currentRole) {
     roleUserIdInput.value = userId;
     roleModalUser.textContent = `User: ${userName} (${currentRole})`;
     newRoleSelect.value = currentRole;
+    if (roleForm) {
+        roleForm.dataset.currentRole = currentRole;
+        roleForm.dataset.targetName = userName;
+    }
     roleModal.classList.add('active');
 }
 
@@ -64,8 +110,16 @@ if (roleForm) {
         const userId = roleUserIdInput.value;
         const newRole = newRoleSelect.value;
         const submitBtn = roleForm.querySelector('button[type="submit"]');
+        const previousRole = roleForm.dataset.currentRole || '';
+        const targetName = roleForm.dataset.targetName || 'Unknown User';
 
         if (!userId || !submitBtn) {
+            return;
+        }
+
+        if (newRole === previousRole) {
+            roleModal.classList.remove('active');
+            showToast('This user already has that role.', 'error');
             return;
         }
 
@@ -74,7 +128,19 @@ if (roleForm) {
 
         try {
             await updateDoc(doc(db, 'users', userId), { role: newRole });
+            await writeAuditLog({
+                type: 'role_changed',
+                message: `${targetName}'s role changed from ${previousRole || 'user'} to ${newRole}.`,
+                targetId: userId,
+                targetType: 'user',
+                meta: {
+                    previousRole,
+                    newRole,
+                    targetName
+                }
+            });
             showToast(`User role successfully updated to ${newRole.toUpperCase()}.`, 'success');
+            roleForm.dataset.currentRole = newRole;
             roleModal.classList.remove('active');
             fetchUsers();
         } catch (error) {
@@ -168,6 +234,44 @@ if (adminList || staffList || usersList) {
     fetchUsers();
 }
 
+if (logsContainer) {
+    const fetchAuditLogs = async () => {
+        try {
+            const logsQuery = query(
+                collection(db, 'auditLogs'),
+                orderBy('createdAt', 'desc'),
+                limit(100)
+            );
+            const logsSnapshot = await getDocs(logsQuery);
+
+            if (logsSnapshot.empty) {
+                renderLogsEmptyState('No audit logs found yet.');
+                return;
+            }
+
+            logsContainer.innerHTML = logsSnapshot.docs.map((docSnap) => {
+                const log = docSnap.data();
+                const metaLine = formatAuditMeta(log.meta);
+
+                return `
+                    <div class="log-entry">
+                        <div><strong>${escapeHtml(log.type || 'log')}</strong> • ${escapeHtml(formatAuditTime(log.createdAt))}</div>
+                        <div>${escapeHtml(log.message || 'No message available.')}</div>
+                        <div>Actor: ${escapeHtml(log.actorName || 'Unknown User')} (${escapeHtml(log.actorUid || 'unknown')})</div>
+                        <div>Target: ${escapeHtml(log.targetType || 'unknown')} / ${escapeHtml(log.targetId || 'n/a')}</div>
+                        ${metaLine ? `<div>${metaLine}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error('Error loading audit logs:', error);
+            renderLogsEmptyState('Unable to load audit logs.', true);
+        }
+    };
+
+    fetchAuditLogs();
+}
+
 if (totalUsers) {
     getDocs(collection(db, 'users')).then((snapshot) => {
         totalUsers.textContent = snapshot.size;
@@ -242,13 +346,6 @@ if (totalUsers) {
 
         fetchRecentPending();
     }
-}
-
-if (logsContainer) {
-    logsContainer.innerHTML = `
-        <div class="log-entry">[INFO] System initialized at ${new Date().toLocaleString()}</div>
-        <div class="log-entry">[INFO] Database connection established.</div>
-    `;
 }
 
 function showToast(message, type = 'success') {

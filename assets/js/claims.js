@@ -1,4 +1,5 @@
 import { db, auth } from './firebase-config.js';
+import { writeAuditLog } from './audit-log.js';
 import {
     collection,
     addDoc,
@@ -40,7 +41,7 @@ document.addEventListener('submit', async (event) => {
     submitBtn.textContent = 'Submitting...';
 
     try {
-        await addDoc(collection(db, 'claims'), {
+        const claimRef = await addDoc(collection(db, 'claims'), {
             itemId,
             claimerUid: user.uid,
             claimerName: user.displayName || user.email,
@@ -48,6 +49,16 @@ document.addEventListener('submit', async (event) => {
             evidenceFiles: [],
             status: 'pending',
             createdAt: serverTimestamp()
+        });
+
+        await writeAuditLog({
+            type: 'claim_created',
+            message: `${user.displayName || user.email || 'A user'} submitted a claim.`,
+            targetId: claimRef.id,
+            targetType: 'claim',
+            meta: {
+                itemId
+            }
         });
 
         alert('Claim submitted successfully! Staff will review it.');

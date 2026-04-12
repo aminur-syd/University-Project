@@ -1,4 +1,5 @@
 import { db, auth } from './firebase-config.js';
+import { writeAuditLog } from './audit-log.js';
 import {
     collection,
     getDocs,
@@ -136,6 +137,15 @@ async function updatePostReviewStatus(itemId, reviewStatus) {
             reviewStatus,
             reviewedBy: auth.currentUser.uid,
             reviewedAt: serverTimestamp()
+        });
+        await writeAuditLog({
+            type: 'post_reviewed',
+            message: `Found item post ${reviewStatus}.`,
+            targetId: itemId,
+            targetType: 'item',
+            meta: {
+                reviewStatus
+            }
         });
         alert(`Post ${reviewStatus} successfully.`);
         window.location.reload();
@@ -294,6 +304,18 @@ async function updateClaimStatus(claimId, itemId, status, claimerName = '') {
         } else {
             alert(`Claim ${status} successfully.`);
         }
+
+        await writeAuditLog({
+            type: 'claim_reviewed',
+            message: `Claim ${status}.`,
+            targetId: claimId,
+            targetType: 'claim',
+            meta: {
+                status,
+                itemId: itemId || '',
+                claimerName: claimerName || ''
+            }
+        });
 
         window.location.reload();
     } catch (error) {

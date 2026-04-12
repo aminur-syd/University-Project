@@ -1,4 +1,5 @@
 import { db, auth, storage } from './firebase-config.js';
+import { writeAuditLog } from './audit-log.js';
 import {
     collection,
     addDoc,
@@ -179,7 +180,7 @@ function isCommentableFoundItem(item) {
 }
 
 function canViewerReadItem(item, user, role) {
-    if (!item || !user) {
+    if (!item) {
         return false;
     }
 
@@ -187,11 +188,19 @@ function canViewerReadItem(item, user, role) {
         return true;
     }
 
+    if (isApprovedActiveItem(item)) {
+        return true;
+    }
+
+    if (!user) {
+        return false;
+    }
+
     if (item.createdBy === user.uid) {
         return true;
     }
 
-    return isApprovedActiveItem(item);
+    return false;
 }
 
 function canViewerResolveItem(item, role) {
@@ -402,28 +411,6 @@ function renderItemDetailMessage(message) {
     `;
 }
 
-function renderGridLoginRequiredState(container, message) {
-    if (!container) return;
-
-    container.innerHTML = `
-        <div class="item-grid-status">
-            <p>${escapeHtml(message)}</p>
-            <a href="login.html" class="btn btn-primary">Login To Continue</a>
-        </div>
-    `;
-}
-
-function renderItemDetailLoginRequiredState() {
-    if (!itemDetailContainer) return;
-
-    itemDetailContainer.innerHTML = `
-        <div class="item-detail-empty-state">
-            <p>Login is required to view item details.</p>
-            <a href="login.html" class="btn btn-primary">Login To Continue</a>
-        </div>
-    `;
-}
-
 function stopItemDetailSubscription() {
     if (unsubscribeItemDetail) {
         unsubscribeItemDetail();
@@ -584,6 +571,18 @@ function renderItemDetail(item) {
                     }
                 });
 
+                await writeAuditLog({
+                    type: 'chat_initiated',
+                    message: `${getSafeDisplayNameFromUser(auth.currentUser)} initiated a secure claim chat for ${item.title || 'an item'}.`,
+                    targetId: chatRef.id,
+                    targetType: 'chat',
+                    meta: {
+                        itemId: item.id,
+                        itemTitle: item.title || '',
+                        itemType: item.type || ''
+                    }
+                });
+
                 window.location.href = 'user/chat.html?chatId=' + chatRef.id;
             } catch (error) {
                 console.error('Error initiating handover process:', error);
@@ -627,6 +626,16 @@ function renderItemDetail(item) {
                 }
 
                 await updateDoc(doc(db, 'items', itemDetailCurrentItem.id), payload);
+                await writeAuditLog({
+                    type: 'item_resolved',
+                    message: `Item ${itemDetailCurrentItem.title || itemDetailCurrentItem.id} was marked as handed over from the item details page.`,
+                    targetId: itemDetailCurrentItem.id,
+                    targetType: 'item',
+                    meta: {
+                        handedOverTo: handedOverTo || '',
+                        source: 'item_details'
+                    }
+                });
                 alert('Item marked as handed over.');
             } catch (error) {
                 console.error('Error resolving item:', error);
@@ -1010,22 +1019,6 @@ if (latestLostGrid || latestFoundGrid || itemsGrid || statsSection) {
     };
 
     onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-            if (latestLostGrid) {
-                renderGridLoginRequiredState(latestLostGrid, 'Login is required to view recently lost items.');
-            }
-
-            if (latestFoundGrid) {
-                renderGridLoginRequiredState(latestFoundGrid, 'Login is required to view recently found items.');
-            }
-
-            if (itemsGrid) {
-                renderGridLoginRequiredState(itemsGrid, 'Login is required to browse items.');
-            }
-
-            return;
-        }
-
         const currentUserRole = await resolveUserRole(user);
 
         if (latestLostGrid || latestFoundGrid) {
@@ -1156,15 +1149,6 @@ if (itemDetailContainer) {
         onAuthStateChanged(auth, async (user) => {
             itemDetailCurrentUser = user;
             itemDetailCurrentUserRole = await resolveUserRole(user);
-
-            if (!user) {
-                itemDetailCurrentItem = null;
-                stopItemDetailSubscription();
-                stopCommentsSubscription();
-                showCommentsSection(false);
-                renderItemDetailLoginRequiredState();
-                return;
-            }
 
             subscribeToItemDetail(itemId);
         });

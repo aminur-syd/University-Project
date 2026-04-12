@@ -57,6 +57,32 @@ Then open `http://localhost:8080/`.
 	- Firestore rules: `firestore.rules`
 	- Storage rules: `storage.rules`
 
+## Manual Firebase Console Steps
+
+1. Enable the Authentication providers used by this site:
+	- Email/Password
+	- Google
+	- Phone
+2. Enable Firestore Database.
+	- Missing this breaks browsing, item details, moderation, claims, chats, comments, and admin audit logs.
+3. Enable Firebase Storage.
+	- Missing this breaks item image uploads.
+4. Deploy `firestore.rules`.
+	- Missing this can block public approved-item browsing, comments, moderation, chats, claims, or admin audit log access.
+5. Deploy `storage.rules`.
+	- Missing this can block or overexpose image uploads.
+6. Create the Firestore composite indexes required by the current repository queries:
+	- `items`: `type ASC, status ASC, reviewStatus ASC, createdAt DESC`
+	- `items`: `status ASC, reviewStatus ASC, createdAt DESC`
+	- `items`: `createdBy ASC, createdAt DESC`
+	- `items/{itemId}/comments`: `status ASC, createdAt DESC`
+	- `claims`: `claimerUid ASC, createdAt DESC`
+	- `chats`: `userId ASC, status ASC, updatedAt DESC`
+	- `chats`: `status ASC, createdAt DESC`
+	- Missing indexes cause the affected list or dashboard query to fail with a Firestore index error.
+7. Install and configure the Firebase Trigger Email extension if you use the `mail` collection for notification emails.
+	- Without it, chat and claim actions still work, but notification emails will not send.
+
 ## Deployment
 
 This project can be deployed on Firebase Hosting or any static hosting provider. Ensure the Firebase configuration points to the correct project.
