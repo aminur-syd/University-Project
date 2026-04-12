@@ -4,10 +4,12 @@ import {
     collection,
     addDoc,
     getDocs,
+    getDoc,
     query,
     where,
     orderBy,
-    serverTimestamp
+    serverTimestamp,
+    doc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const myClaimsList = document.getElementById('my-claims-list');
@@ -18,7 +20,19 @@ function getClaimStatusClass(status) {
     return 'status-label status-label--pending';
 }
 
+function getLegacyClaimType(itemType) {
+    if (itemType === 'found') return 'ownership_claim';
+    if (itemType === 'lost') return 'finder_report';
+    return 'general_claim';
+}
+
+function generateClaimToken() {
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, 'X');
+    return `CLM-${Date.now().toString(36).toUpperCase()}-${suffix}`;
+}
+
 document.addEventListener('submit', async (event) => {
+    // Legacy fallback path: no current HTML page uses this form, but older claim links can still hit it.
     if (!event.target || event.target.id !== 'claim-form') {
         return;
     }
@@ -41,13 +55,28 @@ document.addEventListener('submit', async (event) => {
     submitBtn.textContent = 'Submitting...';
 
     try {
+        const itemSnapshot = await getDoc(doc(db, 'items', itemId));
+        if (!itemSnapshot.exists()) {
+            throw new Error('The related item could not be found.');
+        }
+
+        const itemData = itemSnapshot.data();
+        const itemTitle = itemData.title || 'Unknown Item';
+        const itemType = itemData.type || 'unknown';
+        const claimerName = user.displayName || user.email || 'Unknown User';
+
         const claimRef = await addDoc(collection(db, 'claims'), {
             itemId,
+            itemTitle,
+            itemType,
             claimerUid: user.uid,
-            claimerName: user.displayName || user.email,
+            claimerName,
+            claimerEmail: user.email || 'No email on account',
             message,
             evidenceFiles: [],
             status: 'pending',
+            type: getLegacyClaimType(itemData.type),
+            claimToken: generateClaimToken(),
             createdAt: serverTimestamp()
         });
 
