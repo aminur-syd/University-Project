@@ -20,8 +20,16 @@ service cloud.firestore {
       return isUser() && itemData.createdBy == request.auth.uid;
     }
 
-    function isPublicApprovedActiveItem(itemData) {
+    function isApprovedActiveItem(itemData) {
       return itemData.reviewStatus == 'approved' && itemData.status == 'active';
+    }
+
+    function canReadItem(itemData) {
+      return isUser() && (
+        isItemOwner(itemData) ||
+        isStaff() ||
+        isApprovedActiveItem(itemData)
+      );
     }
 
     match /users/{userId} {
@@ -32,9 +40,7 @@ service cloud.firestore {
     }
 
     match /items/{itemId} {
-      allow read: if isPublicApprovedActiveItem(resource.data) ||
-        isStaff() ||
-        isItemOwner(resource.data);
+      allow read: if canReadItem(resource.data);
 
       allow create: if isUser() && request.resource.data.createdBy == request.auth.uid;
 
@@ -47,9 +53,7 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/items/$(itemId));
         }
 
-        allow read: if isPublicApprovedActiveItem(parentItem().data) ||
-          isStaff() ||
-          isItemOwner(parentItem().data);
+        allow read: if canReadItem(parentItem().data);
 
         allow create: if isUser() &&
           request.resource.data.createdBy == request.auth.uid &&
@@ -58,8 +62,7 @@ service cloud.firestore {
           request.resource.data.text.size() > 0 &&
           request.resource.data.creatorName is string &&
           parentItem().data.type == 'found' &&
-          parentItem().data.reviewStatus == 'approved' &&
-          parentItem().data.status == 'active';
+          isApprovedActiveItem(parentItem().data);
 
         allow update, delete: if isAdmin();
       }

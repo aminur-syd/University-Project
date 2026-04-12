@@ -170,28 +170,28 @@ function isStaffRole(role) {
     return role === 'staff' || role === 'admin';
 }
 
-function isPublicVisibleItem(item) {
+function isApprovedActiveItem(item) {
     return item?.status === 'active' && item?.reviewStatus === 'approved';
 }
 
 function isCommentableFoundItem(item) {
-    return item?.type === 'found' && isPublicVisibleItem(item);
+    return item?.type === 'found' && isApprovedActiveItem(item);
 }
 
 function canViewerReadItem(item, user, role) {
-    if (!item) {
+    if (!item || !user) {
         return false;
-    }
-
-    if (isPublicVisibleItem(item)) {
-        return true;
     }
 
     if (isStaffRole(role)) {
         return true;
     }
 
-    return Boolean(user && item.createdBy === user.uid);
+    if (item.createdBy === user.uid) {
+        return true;
+    }
+
+    return isApprovedActiveItem(item);
 }
 
 function canViewerResolveItem(item, role) {
@@ -402,6 +402,35 @@ function renderItemDetailMessage(message) {
     `;
 }
 
+function renderGridLoginRequiredState(container, message) {
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="item-grid-status">
+            <p>${escapeHtml(message)}</p>
+            <a href="login.html" class="btn btn-primary">Login To Continue</a>
+        </div>
+    `;
+}
+
+function renderItemDetailLoginRequiredState() {
+    if (!itemDetailContainer) return;
+
+    itemDetailContainer.innerHTML = `
+        <div class="item-detail-empty-state">
+            <p>Login is required to view item details.</p>
+            <a href="login.html" class="btn btn-primary">Login To Continue</a>
+        </div>
+    `;
+}
+
+function stopItemDetailSubscription() {
+    if (unsubscribeItemDetail) {
+        unsubscribeItemDetail();
+        unsubscribeItemDetail = null;
+    }
+}
+
 function getResolvedMessage(item) {
     if (item?.status !== 'resolved') {
         return '';
@@ -425,7 +454,7 @@ function getItemAvailabilityCopy(item) {
     }
 
     if (item?.reviewStatus !== 'approved') {
-        return 'This item is not publicly available for new claims or discussion yet.';
+        return 'This item is not available for claims or discussion yet.';
     }
 
     if (item?.status !== 'active') {
@@ -438,20 +467,24 @@ function getItemAvailabilityCopy(item) {
 function renderItemDetail(item) {
     if (!itemDetailContainer) return;
 
-    const isPublicItem = isPublicVisibleItem(item);
+    const isApprovedItem = isApprovedActiveItem(item);
     const canResolveItem = canViewerResolveItem(item, itemDetailCurrentUserRole);
     const buttonText = item.type === 'found' ? 'Claim My Product' : 'I Found This!';
-    const isClaimAvailable = isPublicItem && item.status === 'active';
+    const isOwnItem = Boolean(itemDetailCurrentUser && item.createdBy === itemDetailCurrentUser.uid);
+    const isClaimAvailable = isApprovedItem && !isOwnItem;
     const imageUrl = item.imageUrl || FALLBACK_DETAIL_IMAGE;
     const badgeClass = item.type === 'lost' ? 'badge-lost' : 'badge-found';
     const detailStatusClass = getReviewStatusClass(item.reviewStatus);
     const availabilityCopy = getItemAvailabilityCopy(item);
-    const reviewStatusMarkup = !isPublicItem || isStaffRole(itemDetailCurrentUserRole)
+    const reviewStatusMarkup = !isApprovedItem || isStaffRole(itemDetailCurrentUserRole)
         ? `<span class="${detailStatusClass}">Review: ${escapeHtml(item.reviewStatus || 'pending')}</span>`
         : '';
     const activeStatusMarkup = item.status === 'resolved'
         ? '<span class="status-pill status-pill--success">Resolved</span>'
         : '<span class="status-pill status-pill--info">Active</span>';
+    const claimButtonLabel = isOwnItem
+        ? 'Your Item'
+        : (isClaimAvailable ? buttonText : 'Not Available For Claims');
     const staffResolveMarkup = canResolveItem
         ? `
             <form id="resolve-item-form" class="item-resolve-form">
@@ -493,7 +526,7 @@ function renderItemDetail(item) {
                     ${activeStatusMarkup}
                 </div>
                 <div class="item-detail-actions">
-                    <button id="claim-btn" class="btn btn-primary" ${isClaimAvailable ? '' : 'disabled'}>${escapeHtml(isClaimAvailable ? buttonText : 'Not Available For Claims')}</button>
+                    <button id="claim-btn" class="btn btn-primary" ${isClaimAvailable ? '' : 'disabled'}>${escapeHtml(claimButtonLabel)}</button>
                 </div>
                 ${availabilityCopy ? `<p class="item-detail-note">${escapeHtml(availabilityCopy)}</p>` : ''}
                 ${staffResolveMarkup}
@@ -509,7 +542,7 @@ function renderItemDetail(item) {
                 return;
             }
 
-            if (!itemDetailCurrentItem || !isPublicVisibleItem(itemDetailCurrentItem)) {
+            if (!itemDetailCurrentItem || !isApprovedActiveItem(itemDetailCurrentItem)) {
                 alert('This item is no longer available for claims.');
                 return;
             }
@@ -673,10 +706,7 @@ function subscribeToItemDetail(itemId) {
         return;
     }
 
-    if (unsubscribeItemDetail) {
-        unsubscribeItemDetail();
-        unsubscribeItemDetail = null;
-    }
+    stopItemDetailSubscription();
 
     stopCommentsSubscription();
     renderLoadingState(itemDetailContainer, 'Loading item details...');
@@ -697,7 +727,7 @@ function subscribeToItemDetail(itemId) {
         itemDetailCurrentItem = item;
 
         if (!canViewerReadItem(item, itemDetailCurrentUser, itemDetailCurrentUserRole)) {
-            renderItemDetailMessage('This item is no longer publicly available or you do not have permission to view it.');
+            renderItemDetailMessage('This item is not available to your account or you do not have permission to view it.');
             showCommentsSection(false);
             return;
         }
@@ -707,7 +737,7 @@ function subscribeToItemDetail(itemId) {
     }, (error) => {
         console.error('Error loading item details:', error);
         itemDetailCurrentItem = null;
-        renderItemDetailMessage('This item is no longer publicly available or you do not have permission to view it.');
+        renderItemDetailMessage('This item is not available to your account or you do not have permission to view it.');
         showCommentsSection(false);
     });
 }
@@ -860,7 +890,9 @@ if (createPostForm) {
     });
 }
 
-if (latestLostGrid || latestFoundGrid || itemsGrid) {
+const statsSection = document.querySelector('.stats-section');
+
+if (latestLostGrid || latestFoundGrid || itemsGrid || statsSection) {
     const fetchHomePageItems = async () => {
         try {
             if (latestLostGrid) {
@@ -977,13 +1009,37 @@ if (latestLostGrid || latestFoundGrid || itemsGrid) {
         }
     };
 
-    if (latestLostGrid || latestFoundGrid) {
-        fetchHomePageItems();
-    }
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            if (latestLostGrid) {
+                renderGridLoginRequiredState(latestLostGrid, 'Login is required to view recently lost items.');
+            }
 
-    if (itemsGrid) {
-        fetchBrowseItems();
-    }
+            if (latestFoundGrid) {
+                renderGridLoginRequiredState(latestFoundGrid, 'Login is required to view recently found items.');
+            }
+
+            if (itemsGrid) {
+                renderGridLoginRequiredState(itemsGrid, 'Login is required to browse items.');
+            }
+
+            return;
+        }
+
+        const currentUserRole = await resolveUserRole(user);
+
+        if (latestLostGrid || latestFoundGrid) {
+            await fetchHomePageItems();
+        }
+
+        if (itemsGrid) {
+            await fetchBrowseItems();
+        }
+
+        if (statsSection && isStaffRole(currentUserRole)) {
+            fetchHomeStats();
+        }
+    });
 }
 
 async function fetchHomeStats() {
@@ -1037,10 +1093,6 @@ async function fetchHomeStats() {
     } catch (error) {
         console.error('Error fetching stats:', error);
     }
-}
-
-if (document.querySelector('.stats-section')) {
-    fetchHomeStats();
 }
 
 if (myPostsList) {
@@ -1104,6 +1156,16 @@ if (itemDetailContainer) {
         onAuthStateChanged(auth, async (user) => {
             itemDetailCurrentUser = user;
             itemDetailCurrentUserRole = await resolveUserRole(user);
+
+            if (!user) {
+                itemDetailCurrentItem = null;
+                stopItemDetailSubscription();
+                stopCommentsSubscription();
+                showCommentsSection(false);
+                renderItemDetailLoginRequiredState();
+                return;
+            }
+
             subscribeToItemDetail(itemId);
         });
     }

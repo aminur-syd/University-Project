@@ -64,6 +64,8 @@ if (pendingPostsList) {
     const fetchFoundItemsList = async () => {
         const itemsQuery = query(
             collection(db, 'items'),
+            where('type', '==', 'found'),
+            where('reviewStatus', '==', 'pending'),
             where('status', '==', 'active'),
             orderBy('createdAt', 'desc')
         );
@@ -73,7 +75,7 @@ if (pendingPostsList) {
             pendingPostsList.innerHTML = '';
 
             if (querySnapshot.empty) {
-                renderPostsEmptyState('No items reported yet.');
+                renderPostsEmptyState('No pending found items to review.');
                 return;
             }
 
@@ -100,14 +102,19 @@ if (pendingPostsList) {
                         </div>
                     </div>
                     <div class="post-item__actions">
-                        <button class="btn btn-danger delete-post-btn" data-id="${docSnap.id}">Delete Post</button>
+                        <button class="btn btn-success approve-post-btn" data-id="${docSnap.id}">Approve</button>
+                        <button class="btn btn-danger reject-post-btn" data-id="${docSnap.id}">Reject</button>
                     </div>
                 `;
                 pendingPostsList.appendChild(card);
             });
 
-            document.querySelectorAll('.delete-post-btn').forEach((button) => {
-                button.addEventListener('click', () => deletePost(button.dataset.id));
+            document.querySelectorAll('.approve-post-btn').forEach((button) => {
+                button.addEventListener('click', () => updatePostReviewStatus(button.dataset.id, 'approved'));
+            });
+
+            document.querySelectorAll('.reject-post-btn').forEach((button) => {
+                button.addEventListener('click', () => updatePostReviewStatus(button.dataset.id, 'rejected'));
             });
         } catch (error) {
             console.error('Error fetching items:', error);
@@ -118,22 +125,22 @@ if (pendingPostsList) {
     fetchFoundItemsList();
 }
 
-async function deletePost(itemId) {
-    if (!confirm('Are you sure you want to delete this found item post?')) {
+async function updatePostReviewStatus(itemId, reviewStatus) {
+    if (!confirm(`Are you sure you want to ${reviewStatus} this found item post?`)) {
         return;
     }
 
     try {
         const itemRef = doc(db, 'items', itemId);
         await updateDoc(itemRef, {
-            status: 'removed',
-            removedBy: auth.currentUser.uid,
-            removedAt: serverTimestamp()
+            reviewStatus,
+            reviewedBy: auth.currentUser.uid,
+            reviewedAt: serverTimestamp()
         });
-        alert('Post deleted successfully.');
+        alert(`Post ${reviewStatus} successfully.`);
         window.location.reload();
     } catch (error) {
-        console.error('Error deleting post:', error);
+        console.error('Error updating post review status:', error);
         alert('Error: ' + error.message);
     }
 }
