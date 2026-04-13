@@ -163,7 +163,7 @@ if (pendingClaimsList) {
 
             pendingClaimsList.innerHTML = '';
             if (querySnapshot.empty) {
-                renderClaimsEmptyState('No pending claims to review.');
+                renderClaimsEmptyState('No pending direct claims to review. Live handover chats are handled from the dashboard.');
                 return;
             }
 
@@ -225,7 +225,7 @@ if (pendingClaimsList) {
             });
         } catch (error) {
             console.error('Error fetching pending claims:', error);
-            renderClaimsEmptyState('Error loading claims.');
+            renderClaimsEmptyState('Error loading direct claims.');
         }
     };
 

@@ -69,7 +69,7 @@ onAuthStateChanged(auth, async (user) => {
         }
 
         if (chatSnapshot.empty) {
-            setTableMessage('No active handover conversations currently open.');
+            setTableMessage('No active handover chats currently open. Legacy direct claims, if any, appear on My Direct Claims.');
             return;
         }
 
@@ -96,6 +96,6 @@ onAuthStateChanged(auth, async (user) => {
         });
     } catch (error) {
         console.error('Error fetching chats:', error);
-        setTableMessage('Error loading chats.', 'error');
+        setTableMessage('Error loading active handover chats.', 'error');
     }
 });

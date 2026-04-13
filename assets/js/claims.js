@@ -116,7 +116,7 @@ if (myClaimsList) {
             myClaimsList.innerHTML = '';
 
             if (claimsSnapshot.empty) {
-                myClaimsList.innerHTML = '<p>You haven\'t made any claims yet.</p>';
+                myClaimsList.innerHTML = '<p>No legacy direct claims found. If you have an active handover, track it from your Dashboard.</p>';
                 return;
             }
 

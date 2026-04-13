@@ -44,7 +44,7 @@ onAuthStateChanged(auth, async (user) => {
         }
 
         if (chatSnapshot.empty) {
-            setTableMessage('No pending claims requiring response at the moment.');
+            setTableMessage('No active handover chats requiring response right now. Pending direct claims are reviewed on the Review Claims page.');
             return;
         }
 
@@ -69,6 +69,6 @@ onAuthStateChanged(auth, async (user) => {
         });
     } catch (error) {
         console.error('Error fetching chats:', error);
-        setTableMessage('Error loading pending claims.', 'error');
+        setTableMessage('Error loading active handover chats.', 'error');
     }
 });
