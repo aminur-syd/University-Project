@@ -1,4 +1,4 @@
-import { db, auth, storage } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
 import { writeAuditLog } from './audit-log.js';
 import {
     collection,
@@ -14,11 +14,6 @@ import {
     limit,
     onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import {
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -41,6 +36,9 @@ const FALLBACK_CARD_IMAGE = 'https://via.placeholder.com/300x200?text=No+Image';
 const FALLBACK_DETAIL_IMAGE = 'https://via.placeholder.com/600x400?text=No+Image';
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const FIREBASE_OPERATION_TIMEOUT_MS = 15000;
+// Client-side demo/project config only. This browser-exposed key should be replaced manually for this student/demo setup.
+const IMGBB_API_KEY = 'YOUR_IMGBB_API_KEY';
+const IMGBB_UPLOAD_ENDPOINT = 'https://api.imgbb.com/1/upload';
 
 let createPostCurrentUser = auth.currentUser;
 let hasCreatePostAuthResolved = !createPostForm;
@@ -224,26 +222,53 @@ async function resolveUserRole(user) {
     return 'user';
 }
 
-async function uploadItemImage(userId, imageFile) {
+async function uploadItemImageToImgbb(imageFile) {
+    if (IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY') {
+        throw createFirebaseError(
+            'imgbb/not-configured',
+            'Image upload is not configured yet. Add your IMGBB API key and try again.'
+        );
+    }
+
+    const formData = new FormData();
     const safeFileName = sanitizeFileName(imageFile.name) || 'item-image';
-    const imageRef = ref(storage, `items/${userId}/${Date.now()}-${safeFileName}`);
-    const uploadTimeoutError = createFirebaseError(
-        'storage/timeout',
-        'Firebase Storage did not respond in time. Enable Storage in Firebase Console and verify the bucket name in firebase-config.js.'
-    );
 
-    await withTimeout(uploadBytes(imageRef, imageFile, {
-        contentType: imageFile.type
-    }), FIREBASE_OPERATION_TIMEOUT_MS, uploadTimeoutError);
+    formData.append('image', imageFile);
+    formData.append('name', safeFileName);
 
-    return withTimeout(
-        getDownloadURL(imageRef),
+    const uploadResponse = await withTimeout(
+        fetch(`${IMGBB_UPLOAD_ENDPOINT}?key=${encodeURIComponent(IMGBB_API_KEY)}`, {
+            method: 'POST',
+            body: formData
+        }),
         FIREBASE_OPERATION_TIMEOUT_MS,
         createFirebaseError(
-            'storage/url-timeout',
-            'Image upload finished, but Firebase did not return a download URL in time.'
+            'imgbb/timeout',
+            'Image upload failed. Please try again.'
         )
     );
+
+    let responsePayload = null;
+
+    try {
+        responsePayload = await uploadResponse.json();
+    } catch (error) {
+        throw createFirebaseError('imgbb/invalid-response', 'Image upload failed. Please try again.');
+    }
+
+    if (!uploadResponse.ok || !responsePayload?.success) {
+        throw createFirebaseError(
+            'imgbb/upload-failed',
+            responsePayload?.error?.message || 'Image upload failed. Please try again.'
+        );
+    }
+
+    const publicImageUrl = responsePayload?.data?.display_url || responsePayload?.data?.url;
+    if (!publicImageUrl) {
+        throw createFirebaseError('imgbb/missing-url', 'Image upload failed. Please try again.');
+    }
+
+    return publicImageUrl;
 }
 
 function getCreatePostErrorMessage(error, stage) {
@@ -255,20 +280,13 @@ function getCreatePostErrorMessage(error, stage) {
         case 'auth/invalid-user-token':
         case 'unauthenticated':
             return 'You must be logged in to post. Please sign in again.';
-        case 'storage/timeout':
-        case 'storage/url-timeout':
-        case 'storage/bucket-not-found':
-        case 'storage/project-not-found':
-        case 'storage/no-default-bucket':
-            return 'Firebase Storage is not ready for this project. Enable Storage in Firebase Console, then update the bucket name in firebase-config.js.';
-        case 'storage/unauthorized':
-            return 'Firebase Storage denied the image upload. Publish the latest storage.rules and try again.';
-        case 'storage/retry-limit-exceeded':
-            return 'The image upload timed out. Please try again after Firebase Storage is enabled and configured.';
-        case 'storage/invalid-format':
-            return 'Please upload a valid image file.';
-        case 'storage/canceled':
-            return 'The image upload was canceled before it finished.';
+        case 'imgbb/not-configured':
+            return 'Image upload is not configured yet. Add your IMGBB API key and try again.';
+        case 'imgbb/timeout':
+        case 'imgbb/invalid-response':
+        case 'imgbb/upload-failed':
+        case 'imgbb/missing-url':
+            return 'Image upload failed. Please try again.';
         case 'permission-denied':
             return stage === 'save'
                 ? 'Firestore denied the item save. Publish the latest firestore.rules and try again.'
@@ -278,7 +296,7 @@ function getCreatePostErrorMessage(error, stage) {
             return 'Firebase did not respond in time. Please try again.';
         default:
             if (stage === 'upload') {
-                return error?.message || 'Image upload failed. Please verify Firebase Storage is enabled and configured correctly.';
+                return error?.message || 'Image upload failed. Please try again.';
             }
             return error?.message || 'Posting failed. Please try again.';
     }
@@ -840,7 +858,7 @@ if (createPostForm) {
             if (imageFile) {
                 stage = 'upload';
                 setSubmitButtonState(submitBtn, 'Uploading Image...', true);
-                imageUrl = await uploadItemImage(user.uid, imageFile);
+                imageUrl = await uploadItemImageToImgbb(imageFile);
             }
 
             stage = 'save';
