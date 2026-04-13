@@ -37,7 +37,7 @@ const FALLBACK_DETAIL_IMAGE = 'https://via.placeholder.com/600x400?text=No+Image
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const FIREBASE_OPERATION_TIMEOUT_MS = 15000;
 // Client-side demo/project config only. This browser-exposed key should be replaced manually for this student/demo setup.
-const IMGBB_API_KEY = 'YOUR_IMGBB_API_KEY';
+const IMGBB_API_KEY = 'b7d7a635920b14b3b0a9868f055eb0b9';
 const IMGBB_UPLOAD_ENDPOINT = 'https://api.imgbb.com/1/upload';
 
 let createPostCurrentUser = auth.currentUser;
