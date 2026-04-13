@@ -1080,6 +1080,18 @@ footer {
     margin-top: 50px;
 }
 
+.team-grid--duo {
+    grid-template-columns: repeat(2, minmax(250px, 320px));
+    justify-content: center;
+    gap: 28px;
+}
+
+@media (max-width: 768px) {
+    .team-grid--duo {
+        grid-template-columns: minmax(250px, 320px);
+    }
+}
+
 /* Professional Team Styles (No Box) */
 .team-card {
     text-align: center;
