@@ -15,7 +15,6 @@ Users can submit reports for both lost and found items. They can browse availabl
 - Staff and admin review found-item submissions and verify ownership
 
 ## Credits / Team Members
-- [Sunjida Sabbir Moon](https://github.com/sunjedam00n)
 - [Susmita Dhar Priya](https://github.com/Priya-Dhar10)
 
 This project aims to help the university community reconnect with lost belongings more quickly and safely.
