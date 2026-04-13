@@ -12,8 +12,8 @@
     <link rel="stylesheet" href="../assets/css/style.css?v=20260413-02">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260404-01">
-    <link rel="stylesheet" href="../assets/css/chat.css?v=20260404-01">
+    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260413-02">
+    <link rel="stylesheet" href="../assets/css/chat.css?v=20260413-02">
 </head>
 
 <body>
@@ -44,8 +44,13 @@
             <div class="chat-container" id="chat-container">
                 <div class="chat-header">
                     <div>
-                        <h3 id="chat-item-title">Loading Handover Chat...</h3>
-                        <p class="chat-header__meta" id="chat-sub-info">Connecting to secure server...</p>
+                        <div class="chat-item-preview-row">
+                            <div id="chat-item-preview" class="chat-item-preview" aria-hidden="true"></div>
+                            <div>
+                                <h3 id="chat-item-title">Loading Handover Chat...</h3>
+                                <p class="chat-header__meta" id="chat-sub-info">Connecting to secure server...</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="chat-header__actions">
                         <span class="chat-status-badge" id="chat-status-badge">Active</span>
@@ -70,7 +75,7 @@
     <!-- Firebase & Scripts -->
     <script type="module" src="../assets/js/firebase-config.js?v=20260413-04"></script>
     <script type="module" src="../assets/js/auth.js?v=20260404-01"></script>
-    <script type="module" src="../assets/js/chat.js?v=20260413-04"></script>
+    <script type="module" src="../assets/js/chat.js?v=20260413-05"></script>
 </body>
 
 </html>

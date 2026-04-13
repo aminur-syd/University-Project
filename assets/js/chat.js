@@ -20,6 +20,8 @@ const chatSubInfo = document.getElementById('chat-sub-info');
 const chatStatusBadge = document.getElementById('chat-status-badge');
 const sendBtn = document.getElementById('send-btn');
 const handoverBtn = document.getElementById('handover-btn'); // For staff only
+const chatItemPreview = document.getElementById('chat-item-preview');
+const CHAT_ITEM_FALLBACK_IMAGE = 'https://via.placeholder.com/120x120?text=No+Image';
 
 let currentChatId = null;
 let currentChatDoc = null;
@@ -47,6 +49,34 @@ function formatTime(timestamp) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function resolveChatImageUrl(chatDoc) {
+    if (chatDoc?.itemImageUrl) {
+        return chatDoc.itemImageUrl;
+    }
+
+    if (chatDoc?.itemId) {
+        try {
+            const itemDoc = await getDoc(doc(db, "items", chatDoc.itemId));
+            if (itemDoc.exists()) {
+                return itemDoc.data().imageUrl || CHAT_ITEM_FALLBACK_IMAGE;
+            }
+        } catch (error) {
+            console.error("Error resolving chat item image:", error);
+        }
+    }
+
+    return CHAT_ITEM_FALLBACK_IMAGE;
+}
+
 // Initialize Chat Interface
 auth.onAuthStateChanged(async (user) => {
     if (!user || !currentChatId) {
@@ -62,6 +92,12 @@ auth.onAuthStateChanged(async (user) => {
             if (docSnap.exists()) {
                 currentChatDoc = docSnap.data();
                 if (chatItemTitle) chatItemTitle.textContent = `Claim: ${currentChatDoc.itemTitle}`;
+                if (chatItemPreview) {
+                    const imageUrl = await resolveChatImageUrl(currentChatDoc);
+                    chatItemPreview.innerHTML = `
+                        <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(currentChatDoc.itemTitle || 'Claimed item')}" class="chat-item-preview__image">
+                    `;
+                }
 
                 // Determine user role (Staff vs Regular User)
                 const userDoc = await getDoc(doc(db, "users", user.uid));

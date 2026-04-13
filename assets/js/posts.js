@@ -565,6 +565,7 @@ function renderItemDetail(item) {
                     itemId: item.id,
                     itemTitle: item.title,
                     itemType: item.type,
+                    itemImageUrl: item.imageUrl || '',
                     userId: auth.currentUser.uid,
                     userName: getSafeDisplayNameFromUser(auth.currentUser),
                     staffId: null,

@@ -1,6 +1,8 @@
 import { auth, db } from './firebase-config.js';
 import {
     collection,
+    doc,
+    getDoc,
     query,
     where,
     orderBy,
@@ -13,6 +15,7 @@ const statPosts = document.getElementById('stat-posts');
 const statClaims = document.getElementById('stat-claims');
 const statResolved = document.getElementById('stat-resolved');
 const activeChatsList = document.getElementById('active-chats-list');
+const CHAT_ITEM_FALLBACK_IMAGE = 'https://via.placeholder.com/80x80?text=No+Image';
 
 function setTableMessage(message, type = 'muted') {
     if (!activeChatsList) return;
@@ -23,6 +26,34 @@ function setTableMessage(message, type = 'muted') {
             <td colspan="3">${message}</td>
         </tr>
     `;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function resolveChatImageUrl(chat) {
+    if (chat?.itemImageUrl) {
+        return chat.itemImageUrl;
+    }
+
+    if (chat?.itemId) {
+        try {
+            const itemDoc = await getDoc(doc(db, 'items', chat.itemId));
+            if (itemDoc.exists()) {
+                return itemDoc.data().imageUrl || CHAT_ITEM_FALLBACK_IMAGE;
+            }
+        } catch (error) {
+            console.error('Error resolving chat item image:', error);
+        }
+    }
+
+    return CHAT_ITEM_FALLBACK_IMAGE;
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -74,26 +105,32 @@ onAuthStateChanged(auth, async (user) => {
         }
 
         activeChatsList.innerHTML = '';
-        chatSnapshot.forEach((docSnap) => {
+        const chatRows = await Promise.all(chatSnapshot.docs.map(async (docSnap) => {
             const chat = docSnap.data();
-            activeChatsList.insertAdjacentHTML(
-                'beforeend',
-                `
-                    <tr>
-                        <td><strong>${chat.itemTitle}</strong></td>
-                        <td>
-                            <span class="status-pill status-pill--info">
-                                <i class="fas fa-circle status-pill__dot"></i>
-                                Action Needed
-                            </span>
-                        </td>
-                        <td>
-                            <a href="chat.html?chatId=${docSnap.id}" class="btn btn-outline btn-sm">Open Secure Chat</a>
-                        </td>
-                    </tr>
-                `
-            );
-        });
+            const imageUrl = await resolveChatImageUrl(chat);
+
+            return `
+                <tr>
+                    <td>
+                        <div class="chat-item-cell">
+                            <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(chat.itemTitle || 'Claimed item')}" class="chat-item-thumb">
+                            <strong>${escapeHtml(chat.itemTitle || 'Untitled Item')}</strong>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-pill status-pill--info">
+                            <i class="fas fa-circle status-pill__dot"></i>
+                            Action Needed
+                        </span>
+                    </td>
+                    <td>
+                        <a href="chat.html?chatId=${docSnap.id}" class="btn btn-outline btn-sm">Open Secure Chat</a>
+                    </td>
+                </tr>
+            `;
+        }));
+
+        activeChatsList.innerHTML = chatRows.join('');
     } catch (error) {
         console.error('Error fetching chats:', error);
         setTableMessage('Error loading active handover chats.', 'error');

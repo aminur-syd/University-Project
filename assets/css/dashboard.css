@@ -582,6 +582,22 @@
     color: var(--danger);
 }
 
+.chat-item-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-item-thumb {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #e2e8f0;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
 .table-highlight {
     font-weight: 700;
     color: #111827;
