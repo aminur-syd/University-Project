@@ -12,6 +12,33 @@ document.addEventListener('DOMContentLoaded', () => {
         submitted_by_batch: 'Your Batch',
         submitted_by_department: 'Computer Science and Engineering'
     };
+    const sizeControlDefaults = [
+        {
+            fieldName: 'department_font_size',
+            cssVariable: '--cover-department-size',
+            defaultValue: 24
+        },
+        {
+            fieldName: 'document_type_font_size',
+            cssVariable: '--cover-document-type-size',
+            defaultValue: 18
+        },
+        {
+            fieldName: 'course_box_font_size',
+            cssVariable: '--cover-course-size',
+            defaultValue: 16
+        },
+        {
+            fieldName: 'submitted_to_font_size',
+            cssVariable: '--cover-submitted-to-size',
+            defaultValue: 16
+        },
+        {
+            fieldName: 'submitted_by_font_size',
+            cssVariable: '--cover-submitted-by-size',
+            defaultValue: 16
+        }
+    ];
 
     const form = document.getElementById('cover-page-form');
     const resetButton = document.getElementById('reset-cover-page');
@@ -37,6 +64,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const sizeControls = sizeControlDefaults.map((control) => ({
+        ...control,
+        input: form.elements.namedItem(control.fieldName),
+        readout: document.getElementById(`${control.fieldName}_value`)
+    }));
+    const sizeControlsByName = new Map(
+        sizeControls
+            .filter((control) => control.input)
+            .map((control) => [control.fieldName, control])
+    );
+
     const applyPlaceholders = () => {
         Object.entries(fallbacks).forEach(([key, value]) => {
             const field = form.elements.namedItem(key);
@@ -56,6 +94,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const value = field ? String(field.value).trim() : '';
             element.textContent = value || fallbacks[key] || '\u00A0';
         });
+    };
+
+    const applySizeControl = (control) => {
+        if (!control.input) {
+            return;
+        }
+
+        const value = Number.parseInt(control.input.value, 10);
+        const resolvedValue = Number.isFinite(value) ? value : control.defaultValue;
+        coverPaper.style.setProperty(control.cssVariable, `${resolvedValue}px`);
+
+        if (control.readout) {
+            control.readout.textContent = `${resolvedValue}px`;
+        }
+    };
+
+    const syncSizeControls = () => {
+        sizeControls.forEach(applySizeControl);
     };
 
     const setStatus = (message, isError = false) => {
@@ -174,12 +230,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    form.addEventListener('input', updatePreview);
+    form.addEventListener('input', (event) => {
+        const target = event.target;
+
+        if (target instanceof HTMLInputElement) {
+            const sizeControl = sizeControlsByName.get(target.name);
+
+            if (sizeControl) {
+                applySizeControl(sizeControl);
+                return;
+            }
+        }
+
+        updatePreview();
+    });
 
     resetButton.addEventListener('click', () => {
         form.reset();
         updatePreview();
-        setStatus('Fields cleared. The preview keeps the example text until you start typing.');
+        syncSizeControls();
+        setStatus('');
     });
 
     downloadButton.addEventListener('click', downloadPdf);
@@ -187,5 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
     applyPlaceholders();
     form.reset();
     updatePreview();
+    syncSizeControls();
     setStatus('');
 });
