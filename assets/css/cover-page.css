@@ -192,12 +192,8 @@
     box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.12);
 }
 
-.builder-range-list {
-    display: grid;
-    gap: 14px;
-}
-
 .builder-range {
+    width: 100%;
     padding: 14px 16px;
     border-radius: 18px;
     border: 1px solid #d7deea;

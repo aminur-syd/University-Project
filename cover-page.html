@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
     <link rel="stylesheet" href="assets/css/style.css?v=20260413-02">
-    <link rel="stylesheet" href="assets/css/cover-page.css?v=20260416-01">
+    <link rel="stylesheet" href="assets/css/cover-page.css?v=20260416-02">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700;900&display=swap"
         rel="stylesheet">
@@ -70,9 +70,29 @@
                                         placeholder="Department of Computer Science and Engineering">
                                 </div>
                                 <div class="builder-field builder-field--full">
+                                    <div class="builder-range">
+                                        <div class="builder-range__header">
+                                            <label for="department_font_size">Department Heading</label>
+                                            <span class="builder-range__value" id="department_font_size_value">24px</span>
+                                        </div>
+                                        <input type="range" id="department_font_size" name="department_font_size" min="20"
+                                            max="34" value="24">
+                                    </div>
+                                </div>
+                                <div class="builder-field builder-field--full">
                                     <label for="document_type">Document Type</label>
                                     <input type="text" id="document_type" name="document_type" autocomplete="off"
                                         placeholder="LAB REPORT / ASSIGNMENT / FORUM">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <div class="builder-range">
+                                        <div class="builder-range__header">
+                                            <label for="document_type_font_size">Document Type</label>
+                                            <span class="builder-range__value" id="document_type_font_size_value">18px</span>
+                                        </div>
+                                        <input type="range" id="document_type_font_size" name="document_type_font_size"
+                                            min="14" max="24" value="18">
+                                    </div>
                                 </div>
                                 <div class="builder-field builder-field--full">
                                     <label for="course_title">Course Title</label>
@@ -83,6 +103,16 @@
                                     <label for="course_code">Course Code</label>
                                     <input type="text" id="course_code" name="course_code" autocomplete="off"
                                         placeholder="Your Course Code">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <div class="builder-range">
+                                        <div class="builder-range__header">
+                                            <label for="course_box_font_size">Course Details Box</label>
+                                            <span class="builder-range__value" id="course_box_font_size_value">16px</span>
+                                        </div>
+                                        <input type="range" id="course_box_font_size" name="course_box_font_size" min="14"
+                                            max="22" value="16">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -107,6 +137,16 @@
                                     <label for="submitted_to_department">Department</label>
                                     <input type="text" id="submitted_to_department" name="submitted_to_department"
                                         autocomplete="off" placeholder="Department of Computer Science and Engineering">
+                                </div>
+                                <div class="builder-field builder-field--full">
+                                    <div class="builder-range">
+                                        <div class="builder-range__header">
+                                            <label for="submitted_to_font_size">Submitted To Box</label>
+                                            <span class="builder-range__value" id="submitted_to_font_size_value">16px</span>
+                                        </div>
+                                        <input type="range" id="submitted_to_font_size" name="submitted_to_font_size"
+                                            min="14" max="22" value="16">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -137,54 +177,15 @@
                                     <input type="text" id="submitted_by_department" name="submitted_by_department"
                                         autocomplete="off" placeholder="Computer Science and Engineering">
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="builder-section">
-                            <div class="builder-section__title">
-                                <h3>Text Size</h3>
-                                <span>Preview Controls</span>
-                            </div>
-                            <div class="builder-range-list">
-                                <div class="builder-range">
-                                    <div class="builder-range__header">
-                                        <label for="department_font_size">Department Heading</label>
-                                        <span class="builder-range__value" id="department_font_size_value">24px</span>
+                                <div class="builder-field builder-field--full">
+                                    <div class="builder-range">
+                                        <div class="builder-range__header">
+                                            <label for="submitted_by_font_size">Submitted By Box</label>
+                                            <span class="builder-range__value" id="submitted_by_font_size_value">16px</span>
+                                        </div>
+                                        <input type="range" id="submitted_by_font_size" name="submitted_by_font_size"
+                                            min="14" max="22" value="16">
                                     </div>
-                                    <input type="range" id="department_font_size" name="department_font_size" min="20"
-                                        max="34" value="24">
-                                </div>
-                                <div class="builder-range">
-                                    <div class="builder-range__header">
-                                        <label for="document_type_font_size">Document Type</label>
-                                        <span class="builder-range__value" id="document_type_font_size_value">18px</span>
-                                    </div>
-                                    <input type="range" id="document_type_font_size" name="document_type_font_size"
-                                        min="14" max="24" value="18">
-                                </div>
-                                <div class="builder-range">
-                                    <div class="builder-range__header">
-                                        <label for="course_box_font_size">Course Details Box</label>
-                                        <span class="builder-range__value" id="course_box_font_size_value">16px</span>
-                                    </div>
-                                    <input type="range" id="course_box_font_size" name="course_box_font_size" min="14"
-                                        max="22" value="16">
-                                </div>
-                                <div class="builder-range">
-                                    <div class="builder-range__header">
-                                        <label for="submitted_to_font_size">Submitted To Box</label>
-                                        <span class="builder-range__value" id="submitted_to_font_size_value">16px</span>
-                                    </div>
-                                    <input type="range" id="submitted_to_font_size" name="submitted_to_font_size"
-                                        min="14" max="22" value="16">
-                                </div>
-                                <div class="builder-range">
-                                    <div class="builder-range__header">
-                                        <label for="submitted_by_font_size">Submitted By Box</label>
-                                        <span class="builder-range__value" id="submitted_by_font_size_value">16px</span>
-                                    </div>
-                                    <input type="range" id="submitted_by_font_size" name="submitted_by_font_size"
-                                        min="14" max="22" value="16">
                                 </div>
                             </div>
                         </div>
@@ -343,7 +344,7 @@
         referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
         referrerpolicy="no-referrer"></script>
-    <script src="assets/js/cover-page.js?v=20260416-01"></script>
+    <script src="assets/js/cover-page.js?v=20260416-02"></script>
 </body>
 
 </html>
