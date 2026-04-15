@@ -4,74 +4,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Handover Chat - Lost & Found | World University of Bangladesh (WUB)</title>
+    <title>Redirecting To Secure Chat - Lost &amp; Found | World University of Bangladesh (WUB)</title>
+    <meta http-equiv="refresh" content="0; url=dashboard.html">
     <link rel="icon" type="image/x-icon" href="../favicon.ico?v=20260222">
-    <link rel="icon" type="image/png" sizes="32x32" href="../assets/images/favicon-32x32.png?v=20260222">
-    <link rel="apple-touch-icon" sizes="180x180" href="../assets/images/apple-touch-icon.png?v=20260222">
-    <meta name="theme-color" content="#0f172a">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20260413-02">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/dashboard.css?v=20260413-02">
-    <link rel="stylesheet" href="../assets/css/chat.css?v=20260413-02">
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: Inter, sans-serif;
+            background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+            color: #0f172a;
+        }
+
+        .redirect-card {
+            width: min(480px, calc(100vw - 32px));
+            padding: 32px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 1.4rem;
+        }
+
+        p {
+            margin: 0;
+            color: #475569;
+            line-height: 1.6;
+        }
+    </style>
+    <script>
+        window.location.replace(`dashboard.html${window.location.search}${window.location.hash}`);
+    </script>
 </head>
 
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="../index.html" class="logo">
-                <img src="../assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
-            </a>
-            <div class="nav-links">
-                <span class="dashboard-nav-welcome">Welcome, <span id="user-name">User</span></span>
-                <button id="logout-btn" class="btn btn-outline btn-outline-dark">Logout</button>
-            </div>
-        </div>
-    </nav>
-
-    <div class="dashboard-container">
-        <aside class="sidebar">
-            <ul class="sidebar-menu">
-                <li><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
-                <li><a href="create-post.html"><i class="fas fa-plus-circle"></i> Post Item</a></li>
-                <li><a href="my-posts.html"><i class="fas fa-list"></i> My Posts</a></li>
-                <li><a href="my-claims.html"><i class="fas fa-hand-holding"></i> My Claims</a></li>
-                <li><a href="../index.html"><i class="fas fa-arrow-left"></i> Back to Home</a></li>
-            </ul>
-        </aside>
-
-        <main class="main-content chat-main-content">
-            <div class="chat-container" id="chat-container">
-                <div class="chat-header">
-                    <div>
-                        <div class="chat-item-preview-row">
-                            <div id="chat-item-preview" class="chat-item-preview" aria-hidden="true"></div>
-                            <div>
-                                <h3 id="chat-item-title">Loading Handover Chat...</h3>
-                                <p class="chat-header__meta" id="chat-sub-info">Connecting to secure server...</p>
-                            </div>
-                        </div>
-                    </div>
-                    <span class="chat-status-badge" id="chat-status-badge">Active</span>
-                </div>
-
-                <div class="chat-messages" id="chat-messages">
-                    <div class="sys-message">Loading messages...</div>
-                </div>
-
-                <form class="chat-input-area" id="chat-form">
-                    <input type="text" id="chat-input" placeholder="Type a message to the staff..." required
-                        autocomplete="off">
-                    <button type="submit" id="send-btn" title="Send Message"><i class="fas fa-paper-plane"></i></button>
-                </form>
-            </div>
-        </main>
+    <div class="redirect-card">
+        <h1>Opening secure handover chat...</h1>
+        <p>You are being redirected to your dashboard where the floating chat widget will open automatically.</p>
     </div>
-
-    <!-- Firebase & Scripts -->
-    <script type="module" src="../assets/js/firebase-config.js?v=20260413-04"></script>
-    <script type="module" src="../assets/js/auth.js?v=20260404-01"></script>
-    <script type="module" src="../assets/js/chat.js?v=20260413-05"></script>
 </body>
 
 </html>

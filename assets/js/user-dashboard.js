@@ -124,7 +124,7 @@ onAuthStateChanged(auth, async (user) => {
                         </span>
                     </td>
                     <td>
-                        <a href="chat.html?chatId=${docSnap.id}" class="btn btn-outline btn-sm">Open Secure Chat</a>
+                        <a href="dashboard.html?chatId=${docSnap.id}" class="btn btn-outline btn-sm">Open Secure Chat</a>
                     </td>
                 </tr>
             `;

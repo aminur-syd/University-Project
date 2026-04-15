@@ -1,6 +1,38 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin'];
+    }
+
+    function isChatParticipant(chatId) {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/chats/$(chatId)).data.userId == request.auth.uid;
+    }
+
+    function canAccessChatAttachment(chatId) {
+      return isChatParticipant(chatId) || isStaff();
+    }
+
+    function isAllowedChatAttachment() {
+      return request.resource.contentType != null && (
+        request.resource.contentType.matches('image/.*') ||
+        request.resource.contentType == 'application/pdf' ||
+        request.resource.contentType == 'text/plain' ||
+        request.resource.contentType == 'application/msword' ||
+        request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        request.resource.contentType == 'application/zip' ||
+        request.resource.contentType == 'application/x-zip-compressed' ||
+        request.resource.contentType == 'application/vnd.rar' ||
+        request.resource.contentType == 'application/x-rar-compressed'
+      );
+    }
+
     match /items/{userId}/{fileName} {
       allow read: if true; // Public can see item images
       allow write: if request.auth != null
@@ -14,6 +46,13 @@ service firebase.storage {
                   && (request.auth.uid == userId
                   || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['staff', 'admin']);
       allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /chat-attachments/{chatId}/{messageId}/{fileName} {
+      allow read: if canAccessChatAttachment(chatId);
+      allow write: if canAccessChatAttachment(chatId)
+                   && request.resource.size <= 10 * 1024 * 1024
+                   && isAllowedChatAttachment();
     }
   }
 }

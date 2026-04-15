@@ -1,265 +1,1231 @@
-import { db, auth } from './firebase-config.js';
+import { auth, db, storage } from './firebase-config.js';
 import { writeAuditLog } from './audit-log.js';
 import {
+    addDoc,
     collection,
     doc,
     getDoc,
-    addDoc,
-    query,
-    orderBy,
     onSnapshot,
+    orderBy,
+    query,
     serverTimestamp,
-    updateDoc
+    setDoc,
+    updateDoc,
+    where
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+    deleteObject,
+    getDownloadURL,
+    ref as storageRef,
+    uploadBytes
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-const chatMessages = document.getElementById('chat-messages');
-const chatForm = document.getElementById('chat-form');
-const chatInput = document.getElementById('chat-input');
-const chatItemTitle = document.getElementById('chat-item-title');
-const chatSubInfo = document.getElementById('chat-sub-info');
-const chatStatusBadge = document.getElementById('chat-status-badge');
-const sendBtn = document.getElementById('send-btn');
-const handoverBtn = document.getElementById('handover-btn'); // For staff only
-const chatItemPreview = document.getElementById('chat-item-preview');
-const CHAT_ITEM_FALLBACK_IMAGE = 'https://via.placeholder.com/120x120?text=No+Image';
+const pathName = window.location.pathname;
+const searchParams = new URLSearchParams(window.location.search);
 
-let currentChatId = null;
-let currentChatDoc = null;
-let unsubscribeMessages = null;
-
-// Get Chat ID from URL
-const urlParams = new URLSearchParams(window.location.search);
-currentChatId = urlParams.get('chatId');
-
-if (!currentChatId && document.getElementById('chat-container')) {
-    alert("Invalid Chat Session.");
-    window.history.back();
+if (pathName.endsWith('/user/chat.html') || pathName.endsWith('/staff/chat.html')) {
+    window.location.replace(`dashboard.html${window.location.search}${window.location.hash}`);
 }
 
-function scrollToBottom() {
-    if (chatMessages) {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+const roleScope = pathName.includes('/staff/') ? 'staff' : pathName.includes('/user/') ? 'user' : null;
+const requestedChatId = searchParams.get('chatId');
+
+if (!roleScope) {
+    // This embeddable widget only runs on logged-in user and staff pages.
+} else {
+    const CHAT_ITEM_FALLBACK_IMAGE = 'https://via.placeholder.com/120x120?text=No+Image';
+    const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
+    const ACCEPTED_ATTACHMENT_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'txt', 'zip', 'rar']);
+    const ACCEPTED_ATTACHMENT_MIME_PATTERNS = [
+        /^image\//,
+        /^application\/pdf$/,
+        /^text\/plain$/,
+        /^application\/msword$/,
+        /^application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document$/,
+        /^application\/zip$/,
+        /^application\/x-zip-compressed$/,
+        /^application\/vnd\.rar$/,
+        /^application\/x-rar-compressed$/
+    ];
+    const EMOJI_OPTIONS = ['🙂', '😀', '😂', '😅', '😊', '😍', '🙏', '👍', '👏', '✅', '📄', '📎', '❤️', '😢', '🤝', '🎓'];
+
+    const state = {
+        user: null,
+        threads: [],
+        currentChatId: requestedChatId || null,
+        currentChatDoc: null,
+        currentChatReadOnly: false,
+        selectedFile: null,
+        isOpen: false,
+        isBusy: false,
+        threadMenuOpen: false,
+        emojiOpen: false,
+        requestedChatId,
+        threadsUnsubscribe: null,
+        chatUnsubscribe: null,
+        messagesUnsubscribe: null
+    };
+
+    const elements = {};
+    const claimedChatIds = new Set();
+    const imageUrlCache = new Map();
+    let threadRenderToken = 0;
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
-}
 
-// Format Timestamp
-function formatTime(timestamp) {
-    if (!timestamp) return 'Sending...';
-    const date = timestamp.toDate();
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function escapeHtml(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-async function resolveChatImageUrl(chatDoc) {
-    if (chatDoc?.itemImageUrl) {
-        return chatDoc.itemImageUrl;
+    function formatMessageText(value) {
+        return escapeHtml(String(value ?? '')).replace(/\n/g, '<br>');
     }
 
-    if (chatDoc?.itemId) {
-        try {
-            const itemDoc = await getDoc(doc(db, "items", chatDoc.itemId));
-            if (itemDoc.exists()) {
-                return itemDoc.data().imageUrl || CHAT_ITEM_FALLBACK_IMAGE;
+    function getResolvedTimestampValue(timestamp) {
+        if (!timestamp) return 0;
+        if (typeof timestamp.toMillis === 'function') {
+            return timestamp.toMillis();
+        }
+        if (typeof timestamp.seconds === 'number') {
+            return timestamp.seconds * 1000;
+        }
+        return 0;
+    }
+
+    function sortChatsByUpdatedAtDesc(left, right) {
+        return getResolvedTimestampValue(right.updatedAt || right.createdAt) - getResolvedTimestampValue(left.updatedAt || left.createdAt);
+    }
+
+    function formatTime(timestamp) {
+        if (!timestamp?.toDate) {
+            return 'Sending...';
+        }
+
+        return timestamp.toDate().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function formatBytes(size) {
+        if (!Number.isFinite(size) || size <= 0) {
+            return 'Unknown size';
+        }
+
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const exponent = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
+        const value = size / (1024 ** exponent);
+        return `${value >= 10 || exponent === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[exponent]}`;
+    }
+
+    function getFileExtension(fileName) {
+        const parts = String(fileName || '').toLowerCase().split('.');
+        return parts.length > 1 ? parts.pop() : '';
+    }
+
+    function sanitizeFileName(fileName) {
+        return String(fileName || 'attachment')
+            .replace(/[^a-zA-Z0-9._-]+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 120) || 'attachment';
+    }
+
+    function isAcceptedAttachment(file) {
+        if (!file) {
+            return 'Please choose a file first.';
+        }
+
+        if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+            return 'File must be 10 MB or smaller.';
+        }
+
+        const extension = getFileExtension(file.name);
+        const mimeType = String(file.type || '').toLowerCase();
+        const isAcceptedByMime = ACCEPTED_ATTACHMENT_MIME_PATTERNS.some((pattern) => pattern.test(mimeType));
+        const isAcceptedByExtension = ACCEPTED_ATTACHMENT_EXTENSIONS.has(extension);
+
+        if (!isAcceptedByMime && !isAcceptedByExtension) {
+            return 'Use a common proof file such as image, PDF, DOC, DOCX, TXT, ZIP, or RAR.';
+        }
+
+        return '';
+    }
+
+    function resolveAttachmentContentType(file) {
+        const browserType = String(file?.type || '').toLowerCase();
+        const extension = getFileExtension(file?.name || '');
+
+        if (ACCEPTED_ATTACHMENT_MIME_PATTERNS.some((pattern) => pattern.test(browserType))) {
+            return browserType;
+        }
+
+        if (['jpg', 'jpeg'].includes(extension)) return 'image/jpeg';
+        if (extension === 'png') return 'image/png';
+        if (extension === 'gif') return 'image/gif';
+        if (extension === 'webp') return 'image/webp';
+        if (extension === 'pdf') return 'application/pdf';
+        if (extension === 'doc') return 'application/msword';
+        if (extension === 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        if (extension === 'txt') return 'text/plain';
+        if (extension === 'zip') return 'application/zip';
+        if (extension === 'rar') return 'application/x-rar-compressed';
+
+        return browserType;
+    }
+
+    function getAttachmentKind(attachment) {
+        const contentType = String(attachment?.contentType || attachment?.type || '').toLowerCase();
+        const extension = getFileExtension(attachment?.name || '');
+
+        if (contentType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+            return 'image';
+        }
+
+        return 'file';
+    }
+
+    function getAttachmentIconClass(attachment) {
+        const contentType = String(attachment?.contentType || '').toLowerCase();
+        const extension = getFileExtension(attachment?.name || '');
+
+        if (getAttachmentKind(attachment) === 'image') {
+            return 'fa-file-image';
+        }
+        if (contentType === 'application/pdf' || extension === 'pdf') {
+            return 'fa-file-pdf';
+        }
+        if (contentType.includes('word') || ['doc', 'docx'].includes(extension)) {
+            return 'fa-file-word';
+        }
+        if (contentType.includes('zip') || contentType.includes('rar') || ['zip', 'rar'].includes(extension)) {
+            return 'fa-file-zipper';
+        }
+        if (contentType === 'text/plain' || extension === 'txt') {
+            return 'fa-file-lines';
+        }
+
+        return 'fa-file';
+    }
+
+    function getThreadLabel(chat) {
+        const isClosed = chat.status === 'closed';
+
+        if (roleScope === 'staff') {
+            if (isClosed) {
+                return 'Closed';
             }
+            if (!chat.staffId) {
+                return 'Unassigned';
+            }
+            if (chat.staffId === state.user?.uid) {
+                return 'Assigned to you';
+            }
+            return 'Assigned elsewhere';
+        }
+
+        if (isClosed) {
+            return 'Closed';
+        }
+        return chat.staffId ? 'Connected to staff' : 'Waiting for staff';
+    }
+
+    function setFeedback(message = '', type = 'info') {
+        if (!elements.feedback) {
+            return;
+        }
+
+        elements.feedback.textContent = message;
+        elements.feedback.hidden = !message;
+        elements.feedback.className = `chat-widget__feedback${message ? ` chat-widget__feedback--${type}` : ''}`;
+    }
+
+    function markWidgetSeen() {
+        if (!state.user) {
+            return;
+        }
+
+        try {
+            window.localStorage.setItem(`chat-widget-seen:${roleScope}:${state.user.uid}`, '1');
         } catch (error) {
-            console.error("Error resolving chat item image:", error);
+            console.warn('Could not persist chat widget visibility state:', error);
         }
     }
 
-    return CHAT_ITEM_FALLBACK_IMAGE;
-}
+    function shouldOpenOnFirstLaunch() {
+        if (!state.user) {
+            return false;
+        }
 
-// Initialize Chat Interface
-auth.onAuthStateChanged(async (user) => {
-    if (!user || !currentChatId) {
-        // Not on chat page or not logged in, ignore
-        return;
+        if (state.requestedChatId) {
+            return true;
+        }
+
+        try {
+            return window.localStorage.getItem(`chat-widget-seen:${roleScope}:${state.user.uid}`) !== '1';
+        } catch (error) {
+            return true;
+        }
     }
 
-    try {
-        const chatRef = doc(db, "chats", currentChatId);
+    function updateQueryParam(chatId) {
+        const url = new URL(window.location.href);
 
-        // Listen to Chat Document changes (status updates)
-        onSnapshot(chatRef, async (docSnap) => {
-            if (docSnap.exists()) {
-                currentChatDoc = docSnap.data();
-                if (chatItemTitle) chatItemTitle.textContent = `Claim: ${currentChatDoc.itemTitle}`;
-                if (chatItemPreview) {
-                    const imageUrl = await resolveChatImageUrl(currentChatDoc);
-                    chatItemPreview.innerHTML = `
-                        <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(currentChatDoc.itemTitle || 'Claimed item')}" class="chat-item-preview__image">
-                    `;
-                }
+        if (chatId) {
+            url.searchParams.set('chatId', chatId);
+        } else {
+            url.searchParams.delete('chatId');
+        }
 
-                // Determine user role (Staff vs Regular User)
-                const userDoc = await getDoc(doc(db, "users", user.uid));
-                const isStaff = userDoc.exists() && ['staff', 'admin'].includes(userDoc.data().role);
+        window.history.replaceState({}, '', url);
+    }
 
-                if (isStaff) {
-                    if (chatSubInfo) chatSubInfo.textContent = `Claimant: ${currentChatDoc.userName}`;
-                    // Staff claiming the ticket functionality
-                    if (!currentChatDoc.staffId) {
-                        // First staff to open it gets assigned
-                        await updateDoc(chatRef, { staffId: user.uid });
-                    }
-                } else {
-                    if (chatSubInfo) chatSubInfo.textContent = currentChatDoc.staffId ? `Connected to Staff` : `Waiting for Staff...`;
-                }
+    function getRenderableThreads() {
+        const mergedThreads = new Map();
 
-                // Update Status Badge
-                if (currentChatDoc.status === 'closed') {
-                    if (chatStatusBadge) {
-                        chatStatusBadge.textContent = "Resolved & Closed";
-                        chatStatusBadge.className = "chat-status-badge status-closed";
-                    }
-                    if (chatInput) {
-                        chatInput.disabled = true;
-                        chatInput.placeholder = "This chat is closed.";
-                    }
-                    if (sendBtn) sendBtn.disabled = true;
-                    if (handoverBtn) handoverBtn.hidden = true;
-                }
-            } else {
-                alert("Chat session not found.");
-            }
+        state.threads.forEach((chat) => {
+            mergedThreads.set(chat.id, chat);
         });
 
-        // Listen to Messages subcollection in real-time
-        const q = query(
-            collection(db, "chats", currentChatId, "messages"),
-            orderBy("createdAt", "asc")
-        );
+        if (state.currentChatDoc && !mergedThreads.has(state.currentChatDoc.id)) {
+            mergedThreads.set(state.currentChatDoc.id, state.currentChatDoc);
+        }
 
-        unsubscribeMessages = onSnapshot(q, (snapshot) => {
-            if (!chatMessages) return;
-            chatMessages.innerHTML = ''; // Clear loading message
+        return Array.from(mergedThreads.values()).sort(sortChatsByUpdatedAtDesc);
+    }
 
-            if (snapshot.empty) {
-                chatMessages.innerHTML = `<div class="sys-message">Secure chat initiated. ${currentChatDoc?.staffId ? 'Staff' : 'Student'} has joined the channel.</div>`;
+    function isWidgetVisible() {
+        return getRenderableThreads().length > 0 || Boolean(state.currentChatDoc) || Boolean(state.requestedChatId);
+    }
+
+    function closeTransientPanels() {
+        state.threadMenuOpen = false;
+        state.emojiOpen = false;
+
+        if (elements.threadMenu) {
+            elements.threadMenu.hidden = true;
+        }
+
+        if (elements.emojiPicker) {
+            elements.emojiPicker.hidden = true;
+        }
+    }
+
+    function setWidgetOpen(isOpen) {
+        state.isOpen = isOpen;
+
+        if (!elements.root || !elements.panel || !elements.launcher) {
+            return;
+        }
+
+        elements.root.classList.toggle('chat-widget--open', isOpen);
+        elements.panel.hidden = !isOpen;
+        elements.launcher.setAttribute('aria-expanded', String(isOpen));
+
+        if (isOpen) {
+            markWidgetSeen();
+            window.requestAnimationFrame(() => {
+                if (elements.messages) {
+                    elements.messages.scrollTop = elements.messages.scrollHeight;
+                }
+            });
+        } else {
+            closeTransientPanels();
+        }
+    }
+
+    function syncWidgetVisibility() {
+        if (!elements.root) {
+            return;
+        }
+
+        elements.root.hidden = !isWidgetVisible();
+
+        if (!elements.root.hidden) {
+            updateLauncher();
+        }
+    }
+
+    function updateLauncher() {
+        if (!elements.launcherLabel || !elements.launcherCount) {
+            return;
+        }
+
+        const activeCount = state.threads.length;
+        const currentTitle = state.currentChatDoc?.itemTitle || getRenderableThreads()[0]?.itemTitle || 'Secure Handover Chat';
+
+        elements.launcherLabel.textContent = activeCount > 1
+            ? `${activeCount} active chats`
+            : currentTitle;
+        elements.launcherCount.textContent = String(activeCount || (state.currentChatDoc ? 1 : 0));
+    }
+
+    function clearSelectedFile() {
+        state.selectedFile = null;
+
+        if (elements.fileInput) {
+            elements.fileInput.value = '';
+        }
+
+        if (elements.selectedFile) {
+            elements.selectedFile.hidden = true;
+        }
+    }
+
+    function renderSelectedFile() {
+        if (!elements.selectedFile || !elements.selectedFileName || !elements.selectedFileMeta) {
+            return;
+        }
+
+        if (!state.selectedFile) {
+            elements.selectedFile.hidden = true;
+            elements.selectedFileName.textContent = '';
+            elements.selectedFileMeta.textContent = '';
+            return;
+        }
+
+        elements.selectedFile.hidden = false;
+        elements.selectedFileName.textContent = state.selectedFile.name;
+        elements.selectedFileMeta.textContent = `${formatBytes(state.selectedFile.size)} • Ready to send`;
+    }
+
+    function syncComposerState() {
+        const hasChat = Boolean(state.currentChatDoc);
+        const isClosed = state.currentChatDoc?.status === 'closed';
+        const isDisabled = !hasChat || isClosed || state.currentChatReadOnly || state.isBusy;
+
+        if (elements.input) {
+            elements.input.disabled = isDisabled;
+            elements.input.placeholder = !hasChat
+                ? 'Select a handover chat to continue...'
+                : isClosed
+                    ? 'This handover chat is closed.'
+                    : state.currentChatReadOnly
+                        ? 'This chat is assigned to another staff member.'
+                        : 'Write a message or send proof...';
+        }
+
+        if (elements.sendButton) {
+            elements.sendButton.disabled = isDisabled;
+        }
+
+        if (elements.emojiButton) {
+            elements.emojiButton.disabled = isDisabled;
+        }
+
+        if (elements.fileButton) {
+            elements.fileButton.disabled = isDisabled;
+        }
+
+        if (elements.clearFileButton) {
+            elements.clearFileButton.disabled = state.isBusy;
+        }
+
+        if (elements.handoverButton) {
+            elements.handoverButton.hidden = !(roleScope === 'staff' && hasChat && !isClosed && !state.currentChatReadOnly);
+        }
+    }
+
+    async function resolveChatImageUrl(chatDoc) {
+        if (!chatDoc) {
+            return CHAT_ITEM_FALLBACK_IMAGE;
+        }
+
+        if (chatDoc.itemImageUrl) {
+            imageUrlCache.set(chatDoc.id, chatDoc.itemImageUrl);
+            return chatDoc.itemImageUrl;
+        }
+
+        if (imageUrlCache.has(chatDoc.id)) {
+            return imageUrlCache.get(chatDoc.id);
+        }
+
+        if (!chatDoc.itemId) {
+            return CHAT_ITEM_FALLBACK_IMAGE;
+        }
+
+        try {
+            const itemDoc = await getDoc(doc(db, 'items', chatDoc.itemId));
+            const resolvedUrl = itemDoc.exists() ? itemDoc.data().imageUrl || CHAT_ITEM_FALLBACK_IMAGE : CHAT_ITEM_FALLBACK_IMAGE;
+            imageUrlCache.set(chatDoc.id, resolvedUrl);
+            return resolvedUrl;
+        } catch (error) {
+            console.error('Error resolving chat item image:', error);
+            return CHAT_ITEM_FALLBACK_IMAGE;
+        }
+    }
+
+    async function renderThreadList() {
+        if (!elements.threadList || !elements.threadEmpty) {
+            return;
+        }
+
+        const renderToken = ++threadRenderToken;
+        const threads = getRenderableThreads();
+
+        if (!threads.length) {
+            elements.threadList.innerHTML = '';
+            elements.threadEmpty.hidden = false;
+            return;
+        }
+
+        const threadCards = await Promise.all(threads.map(async (chat) => {
+            const imageUrl = await resolveChatImageUrl(chat);
+            return {
+                ...chat,
+                imageUrl
+            };
+        }));
+
+        if (renderToken !== threadRenderToken) {
+            return;
+        }
+
+        elements.threadEmpty.hidden = true;
+        elements.threadList.innerHTML = threadCards.map((chat) => `
+            <button type="button" class="chat-widget__thread-item${chat.id === state.currentChatId ? ' is-active' : ''}" data-chat-id="${escapeHtml(chat.id)}">
+                <img src="${escapeHtml(chat.imageUrl || CHAT_ITEM_FALLBACK_IMAGE)}" alt="${escapeHtml(chat.itemTitle || 'Claimed item')}" class="chat-widget__thread-thumb">
+                <span class="chat-widget__thread-copy">
+                    <strong>${escapeHtml(chat.itemTitle || 'Untitled Item')}</strong>
+                    <span>${escapeHtml(getThreadLabel(chat))}</span>
+                </span>
+            </button>
+        `).join('');
+    }
+
+    async function renderCurrentChatContext() {
+        if (!elements.chatTitle || !elements.chatSubInfo || !elements.chatStatusBadge || !elements.chatItemPreview) {
+            return;
+        }
+
+        if (!state.currentChatDoc) {
+            elements.chatTitle.textContent = 'Secure Handover Chat';
+            elements.chatSubInfo.textContent = 'Select a conversation to continue.';
+            elements.chatStatusBadge.textContent = 'Idle';
+            elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--idle';
+            elements.chatItemPreview.innerHTML = '';
+            return;
+        }
+
+        const activeChatId = state.currentChatDoc.id;
+        const imageUrl = await resolveChatImageUrl(state.currentChatDoc);
+
+        if (!state.currentChatDoc || state.currentChatDoc.id !== activeChatId) {
+            return;
+        }
+
+        elements.chatTitle.textContent = state.currentChatDoc.itemTitle
+            ? `Claim: ${state.currentChatDoc.itemTitle}`
+            : 'Secure Handover Chat';
+
+        if (state.currentChatDoc.status === 'closed') {
+            elements.chatSubInfo.textContent = 'Ownership has been verified and the handover is complete.';
+            elements.chatStatusBadge.textContent = 'Closed';
+            elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--closed';
+        } else if (roleScope === 'staff') {
+            if (state.currentChatReadOnly) {
+                elements.chatSubInfo.textContent = 'This chat is already assigned to another staff member.';
+                elements.chatStatusBadge.textContent = 'Assigned';
+                elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--readonly';
+            } else {
+                elements.chatSubInfo.textContent = `Claimant: ${state.currentChatDoc.userName || 'Unknown User'}`;
+                elements.chatStatusBadge.textContent = 'Active';
+                elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--active';
+            }
+        } else {
+            elements.chatSubInfo.textContent = state.currentChatDoc.staffId
+                ? 'Connected to staff. Send proof or ask for updates here.'
+                : 'Waiting for staff to join. You can send proof documents now.';
+            elements.chatStatusBadge.textContent = state.currentChatDoc.staffId ? 'Active' : 'Waiting';
+            elements.chatStatusBadge.className = `chat-status-badge ${state.currentChatDoc.staffId ? 'chat-status-badge--active' : 'chat-status-badge--waiting'}`;
+        }
+
+        elements.chatItemPreview.innerHTML = `
+            <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(state.currentChatDoc.itemTitle || 'Claimed item')}" class="chat-item-preview__image">
+        `;
+    }
+
+    function buildAttachmentMarkup(attachment) {
+        if (!attachment?.url) {
+            return '';
+        }
+
+        const kind = getAttachmentKind(attachment);
+
+        if (kind === 'image') {
+            return `
+                <a class="chat-attachment chat-attachment--image" href="${escapeHtml(attachment.url)}" target="_blank" rel="noopener noreferrer">
+                    <img src="${escapeHtml(attachment.url)}" alt="${escapeHtml(attachment.name || 'Attached proof image')}">
+                    <span>Open image proof</span>
+                </a>
+            `;
+        }
+
+        return `
+            <a class="chat-attachment chat-attachment--file" href="${escapeHtml(attachment.url)}" target="_blank" rel="noopener noreferrer">
+                <i class="fas ${getAttachmentIconClass(attachment)} chat-attachment__icon" aria-hidden="true"></i>
+                <span class="chat-attachment__copy">
+                    <strong>${escapeHtml(attachment.name || 'Attachment')}</strong>
+                    <span>${escapeHtml(`${formatBytes(attachment.size)} • ${attachment.contentType || 'Document'}`)}</span>
+                </span>
+                <i class="fas fa-download chat-attachment__download" aria-hidden="true"></i>
+            </a>
+        `;
+    }
+
+    function renderMessages(snapshot) {
+        if (!elements.messages) {
+            return;
+        }
+
+        if (snapshot.empty) {
+            const emptyMessage = state.currentChatDoc?.status === 'closed'
+                ? 'This handover chat has been closed.'
+                : roleScope === 'staff'
+                    ? 'No messages yet. Ask the claimant for proof details when you are ready.'
+                    : 'Secure chat started. Staff will review your case here. You can send proof documents anytime.';
+            elements.messages.innerHTML = `<div class="sys-message">${escapeHtml(emptyMessage)}</div>`;
+            return;
+        }
+
+        elements.messages.innerHTML = '';
+
+        snapshot.forEach((messageDoc) => {
+            const message = messageDoc.data();
+
+            if (message.senderId === 'system') {
+                const systemMessage = document.createElement('div');
+                systemMessage.className = 'sys-message';
+                systemMessage.textContent = message.text || 'System update';
+                elements.messages.appendChild(systemMessage);
                 return;
             }
 
-            snapshot.forEach((msgDoc) => {
-                const msg = msgDoc.data();
-                const isMine = msg.senderId === user.uid;
+            const isMine = message.senderId === state.user?.uid;
+            const wrapper = document.createElement('div');
+            wrapper.className = `message ${isMine ? 'message-sent' : 'message-received'}`;
 
-                if (msg.senderId === 'system') {
-                    const msgDiv = document.createElement('div');
-                    msgDiv.className = 'sys-message';
-                    msgDiv.textContent = msg.text;
-                    chatMessages.appendChild(msgDiv);
-                    return;
-                }
+            wrapper.innerHTML = `
+                ${message.text ? `<div class="message-text">${formatMessageText(message.text)}</div>` : ''}
+                ${buildAttachmentMarkup(message.attachment)}
+                <span class="message-meta">${formatTime(message.createdAt)}</span>
+            `;
 
-                const msgDiv = document.createElement('div');
-                msgDiv.className = `message ${isMine ? 'message-sent' : 'message-received'}`;
-
-                msgDiv.innerHTML = `
-                    <div class="message-text">${msg.text}</div>
-                    <span class="message-meta">${formatTime(msg.createdAt)}</span>
-                `;
-
-                chatMessages.appendChild(msgDiv);
-            });
-            scrollToBottom();
+            elements.messages.appendChild(wrapper);
         });
 
-    } catch (error) {
-        console.error("Error loading chat:", error);
-        if (chatItemTitle) chatItemTitle.textContent = "Error loading chat.";
+        window.requestAnimationFrame(() => {
+            elements.messages.scrollTop = elements.messages.scrollHeight;
+        });
     }
-});
 
-// Send Message
-if (chatForm) {
-    chatForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    function unsubscribeCurrentChatListeners() {
+        if (typeof state.chatUnsubscribe === 'function') {
+            state.chatUnsubscribe();
+        }
 
-        const messageText = chatInput.value.trim();
-        if (!messageText || !currentChatId || !auth.currentUser) return;
+        if (typeof state.messagesUnsubscribe === 'function') {
+            state.messagesUnsubscribe();
+        }
 
-        // Prevent sending if closed
-        if (currentChatDoc && currentChatDoc.status === 'closed') return;
+        state.chatUnsubscribe = null;
+        state.messagesUnsubscribe = null;
+    }
 
-        chatInput.value = ''; // UI clear instantly for responsiveness
+    async function claimChatIfNeeded(chatRef, chatData) {
+        if (roleScope !== 'staff' || !state.user || chatData.staffId || claimedChatIds.has(chatData.id)) {
+            return;
+        }
+
+        claimedChatIds.add(chatData.id);
 
         try {
-            await addDoc(collection(db, "chats", currentChatId, "messages"), {
-                senderId: auth.currentUser.uid,
+            await updateDoc(chatRef, {
+                staffId: state.user.uid,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error claiming chat:', error);
+            setFeedback('Could not assign this chat to your staff account.', 'error');
+        } finally {
+            claimedChatIds.delete(chatData.id);
+        }
+    }
+
+    function renderLoadingState() {
+        if (!elements.messages) {
+            return;
+        }
+
+        elements.messages.innerHTML = '<div class="sys-message">Loading messages...</div>';
+    }
+
+    function selectChat(chatId, options = {}) {
+        if (!chatId || !state.user) {
+            return;
+        }
+
+        state.currentChatId = chatId;
+        updateQueryParam(chatId);
+        clearSelectedFile();
+        closeTransientPanels();
+        setFeedback('');
+        renderLoadingState();
+        syncComposerState();
+        renderThreadList().catch((error) => {
+            console.error('Thread list render failed:', error);
+        });
+
+        const chatRef = doc(db, 'chats', chatId);
+
+        unsubscribeCurrentChatListeners();
+
+        state.chatUnsubscribe = onSnapshot(chatRef, async (chatSnapshot) => {
+            if (!chatSnapshot.exists()) {
+                state.requestedChatId = null;
+                state.currentChatDoc = null;
+                state.currentChatReadOnly = false;
+                updateQueryParam(null);
+                await renderCurrentChatContext();
+                renderLoadingState();
+                setFeedback('This handover chat is no longer available.', 'error');
+                syncComposerState();
+                syncWidgetVisibility();
+
+                if (state.threads.length) {
+                    selectChat(state.threads[0].id, { open: true });
+                }
+                return;
+            }
+
+            const chatData = {
+                id: chatSnapshot.id,
+                ...chatSnapshot.data()
+            };
+
+            await claimChatIfNeeded(chatRef, chatData);
+
+            state.currentChatDoc = chatData;
+            state.currentChatReadOnly = roleScope === 'staff' && Boolean(chatData.staffId && chatData.staffId !== state.user.uid);
+
+            if (state.currentChatReadOnly) {
+                setFeedback('This chat is already assigned to another staff member. Viewing is read-only.', 'info');
+            } else {
+                setFeedback('');
+            }
+
+            await renderCurrentChatContext();
+            renderThreadList().catch((error) => {
+                console.error('Thread list render failed:', error);
+            });
+            syncComposerState();
+            syncWidgetVisibility();
+        }, (error) => {
+            console.error('Error subscribing to chat document:', error);
+            state.requestedChatId = null;
+            updateQueryParam(null);
+            setFeedback('Could not load this handover chat.', 'error');
+            syncWidgetVisibility();
+        });
+
+        state.messagesUnsubscribe = onSnapshot(
+            query(collection(db, 'chats', chatId, 'messages'), orderBy('createdAt', 'asc')),
+            (snapshot) => {
+                renderMessages(snapshot);
+            },
+            (error) => {
+                console.error('Error loading chat messages:', error);
+                if (elements.messages) {
+                    elements.messages.innerHTML = '<div class="sys-message">Could not load the chat history.</div>';
+                }
+                setFeedback('Could not load the chat history.', 'error');
+            }
+        );
+
+        if (options.open) {
+            setWidgetOpen(true);
+        }
+    }
+
+    async function subscribeToThreadList() {
+        if (!state.user) {
+            return;
+        }
+
+        if (typeof state.threadsUnsubscribe === 'function') {
+            state.threadsUnsubscribe();
+        }
+
+        const threadQuery = query(
+            collection(db, 'chats'),
+            where(roleScope === 'staff' ? 'staffId' : 'userId', '==', state.user.uid)
+        );
+
+        state.threadsUnsubscribe = onSnapshot(threadQuery, async (snapshot) => {
+            state.threads = snapshot.docs
+                .map((chatDoc) => ({
+                    id: chatDoc.id,
+                    ...chatDoc.data()
+                }))
+                .filter((chat) => chat.status === 'active')
+                .sort(sortChatsByUpdatedAtDesc);
+
+            await renderThreadList();
+            syncWidgetVisibility();
+
+            if (!state.currentChatId && state.threads.length) {
+                selectChat(state.threads[0].id, { open: shouldOpenOnFirstLaunch() });
+                return;
+            }
+
+            if (!state.currentChatId && !state.threads.length) {
+                setWidgetOpen(false);
+            }
+
+            updateLauncher();
+        }, (error) => {
+            console.error('Error subscribing to chat list:', error);
+            setFeedback('Could not load active chats.', 'error');
+        });
+    }
+
+    function renderEmojiPicker() {
+        if (!elements.emojiPicker) {
+            return;
+        }
+
+        elements.emojiPicker.innerHTML = EMOJI_OPTIONS.map((emoji) => `
+            <button type="button" class="chat-widget__emoji-option" data-emoji="${emoji}" aria-label="Insert ${emoji}">
+                ${emoji}
+            </button>
+        `).join('');
+    }
+
+    function insertEmoji(emoji) {
+        if (!elements.input || elements.input.disabled) {
+            return;
+        }
+
+        const input = elements.input;
+        const start = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
+        const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : input.value.length;
+        const nextValue = `${input.value.slice(0, start)}${emoji}${input.value.slice(end)}`;
+        const cursorPosition = start + emoji.length;
+
+        input.value = nextValue;
+        input.focus();
+        input.setSelectionRange(cursorPosition, cursorPosition);
+    }
+
+    async function handleFileSelection(event) {
+        const [file] = Array.from(event.target.files || []);
+
+        if (!file) {
+            clearSelectedFile();
+            return;
+        }
+
+        const validationError = isAcceptedAttachment(file);
+        if (validationError) {
+            clearSelectedFile();
+            setFeedback(validationError, 'error');
+            return;
+        }
+
+        state.selectedFile = file;
+        renderSelectedFile();
+        setFeedback('');
+    }
+
+    async function handleSend(event) {
+        event.preventDefault();
+
+        if (!state.user || !state.currentChatId || !state.currentChatDoc || state.currentChatReadOnly || state.currentChatDoc.status === 'closed' || state.isBusy) {
+            return;
+        }
+
+        const messageText = elements.input ? elements.input.value.trim() : '';
+        const file = state.selectedFile;
+
+        if (!messageText && !file) {
+            setFeedback('Type a message or attach a proof document before sending.', 'error');
+            return;
+        }
+
+        state.isBusy = true;
+        syncComposerState();
+        setFeedback(file ? 'Uploading proof document...' : 'Sending message...', 'info');
+
+        const messageRef = doc(collection(db, 'chats', state.currentChatId, 'messages'));
+        let uploadedFileRef = null;
+
+        try {
+            let attachment = null;
+
+            if (file) {
+                const resolvedContentType = resolveAttachmentContentType(file);
+                const uploadPath = `chat-attachments/${state.currentChatId}/${messageRef.id}/${sanitizeFileName(file.name)}`;
+                uploadedFileRef = storageRef(storage, uploadPath);
+                await uploadBytes(
+                    uploadedFileRef,
+                    file,
+                    resolvedContentType ? { contentType: resolvedContentType } : undefined
+                );
+                const downloadUrl = await getDownloadURL(uploadedFileRef);
+
+                attachment = {
+                    name: file.name,
+                    url: downloadUrl,
+                    path: uploadPath,
+                    contentType: resolvedContentType || '',
+                    size: file.size,
+                    kind: getAttachmentKind(file)
+                };
+            }
+
+            const payload = {
+                senderId: state.user.uid,
                 text: messageText,
                 createdAt: serverTimestamp()
-            });
+            };
 
-            // Update chat's updatedAt field
-            await updateDoc(doc(db, "chats", currentChatId), {
+            if (attachment) {
+                payload.attachment = attachment;
+            }
+
+            await setDoc(messageRef, payload);
+            await updateDoc(doc(db, 'chats', state.currentChatId), {
                 updatedAt: serverTimestamp()
             });
 
-        } catch (error) {
-            console.error("Error sending message:", error);
-            alert("Failed to send message: " + error.message);
-        }
-    });
-}
-
-// Handover Logic (Staff Only)
-if (handoverBtn) {
-    handoverBtn.addEventListener('click', async () => {
-        if (!currentChatId || !currentChatDoc) return;
-
-        if (confirm("Are you sure you want to mark this item as Handed Over to the user? This will close the chat permanently.")) {
-            try {
-                // 1. Close the chat
-                await updateDoc(doc(db, "chats", currentChatId), {
-                    status: 'closed',
-                    updatedAt: serverTimestamp()
-                });
-
-                // 2. Mark the item as resolved
-                const itemPayload = {
-                    status: 'resolved',
-                    resolvedBy: auth.currentUser.uid,
-                    resolvedAt: serverTimestamp()
-                };
-
-                if (currentChatDoc.userName) {
-                    itemPayload.handedOverTo = currentChatDoc.userName;
-                }
-
-                await updateDoc(doc(db, "items", currentChatDoc.itemId), itemPayload);
-
-                // 3. Add system message
-                await addDoc(collection(db, "chats", currentChatId, "messages"), {
-                    senderId: 'system',
-                    text: `Staff has verified ownership and handed over the item. Chat is now closed.`,
-                    createdAt: serverTimestamp()
-                });
-
-                await writeAuditLog({
-                    type: 'item_resolved',
-                    message: `Item ${currentChatDoc.itemTitle || currentChatDoc.itemId} was handed over and the chat was closed.`,
-                    targetId: currentChatDoc.itemId,
-                    targetType: 'item',
-                    meta: {
-                        chatId: currentChatId,
-                        handedOverTo: currentChatDoc.userName || '',
-                        source: 'chat'
-                    }
-                });
-
-                alert("Item marked as resolved and handed over!");
-            } catch (error) {
-                console.error("Handover error:", error);
-                alert("Error: " + error.message);
+            if (elements.input) {
+                elements.input.value = '';
             }
+
+            clearSelectedFile();
+            setFeedback('');
+        } catch (error) {
+            console.error('Error sending chat message:', error);
+
+            if (uploadedFileRef) {
+                try {
+                    await deleteObject(uploadedFileRef);
+                } catch (cleanupError) {
+                    console.error('Failed to remove orphaned chat attachment:', cleanupError);
+                }
+            }
+
+            setFeedback('Message could not be sent. Please try again.', 'error');
+        } finally {
+            state.isBusy = false;
+            syncComposerState();
         }
+    }
+
+    async function handleHandover() {
+        if (!state.currentChatId || !state.currentChatDoc || roleScope !== 'staff' || state.currentChatReadOnly) {
+            return;
+        }
+
+        if (!window.confirm('Mark this item as verified and handed over? This will permanently close the chat.')) {
+            return;
+        }
+
+        try {
+            await updateDoc(doc(db, 'chats', state.currentChatId), {
+                status: 'closed',
+                updatedAt: serverTimestamp()
+            });
+
+            const itemPayload = {
+                status: 'resolved',
+                resolvedBy: state.user.uid,
+                resolvedAt: serverTimestamp()
+            };
+
+            if (state.currentChatDoc.userName) {
+                itemPayload.handedOverTo = state.currentChatDoc.userName;
+            }
+
+            await updateDoc(doc(db, 'items', state.currentChatDoc.itemId), itemPayload);
+            await addDoc(collection(db, 'chats', state.currentChatId, 'messages'), {
+                senderId: 'system',
+                text: 'Staff has verified ownership and completed the handover. This chat is now closed.',
+                createdAt: serverTimestamp()
+            });
+
+            await writeAuditLog({
+                type: 'item_resolved',
+                message: `Item ${state.currentChatDoc.itemTitle || state.currentChatDoc.itemId} was handed over and the chat was closed.`,
+                targetId: state.currentChatDoc.itemId,
+                targetType: 'item',
+                meta: {
+                    chatId: state.currentChatId,
+                    handedOverTo: state.currentChatDoc.userName || '',
+                    source: 'chat_widget'
+                }
+            });
+
+            setFeedback('Item marked as handed over.', 'success');
+        } catch (error) {
+            console.error('Error completing handover:', error);
+            setFeedback('Could not complete the handover. Please try again.', 'error');
+        }
+    }
+
+    function handleDocumentClick(event) {
+        if (state.threadMenuOpen && elements.threadMenu && elements.threadMenuButton && !elements.threadMenu.contains(event.target) && !elements.threadMenuButton.contains(event.target)) {
+            state.threadMenuOpen = false;
+            elements.threadMenu.hidden = true;
+        }
+
+        if (state.emojiOpen && elements.emojiPicker && elements.emojiButton && !elements.emojiPicker.contains(event.target) && !elements.emojiButton.contains(event.target)) {
+            state.emojiOpen = false;
+            elements.emojiPicker.hidden = true;
+        }
+    }
+
+    function bindWidgetEvents() {
+        elements.launcher.addEventListener('click', () => {
+            setWidgetOpen(!state.isOpen);
+        });
+
+        elements.minimizeButton.addEventListener('click', () => {
+            setWidgetOpen(false);
+        });
+
+        elements.threadMenuButton.addEventListener('click', () => {
+            state.threadMenuOpen = !state.threadMenuOpen;
+            elements.threadMenu.hidden = !state.threadMenuOpen;
+            if (state.threadMenuOpen) {
+                state.emojiOpen = false;
+                elements.emojiPicker.hidden = true;
+            }
+        });
+
+        elements.threadList.addEventListener('click', (event) => {
+            const chatButton = event.target.closest('[data-chat-id]');
+            if (!chatButton) {
+                return;
+            }
+
+            state.threadMenuOpen = false;
+            elements.threadMenu.hidden = true;
+            selectChat(chatButton.dataset.chatId, { open: true });
+        });
+
+        elements.emojiButton.addEventListener('click', () => {
+            if (elements.emojiButton.disabled) {
+                return;
+            }
+
+            state.emojiOpen = !state.emojiOpen;
+            elements.emojiPicker.hidden = !state.emojiOpen;
+            if (state.emojiOpen) {
+                state.threadMenuOpen = false;
+                elements.threadMenu.hidden = true;
+            }
+        });
+
+        elements.emojiPicker.addEventListener('click', (event) => {
+            const emojiButton = event.target.closest('[data-emoji]');
+            if (!emojiButton) {
+                return;
+            }
+
+            insertEmoji(emojiButton.dataset.emoji);
+            state.emojiOpen = false;
+            elements.emojiPicker.hidden = true;
+        });
+
+        elements.fileButton.addEventListener('click', () => {
+            if (elements.fileButton.disabled) {
+                return;
+            }
+
+            elements.fileInput.click();
+        });
+
+        elements.fileInput.addEventListener('change', handleFileSelection);
+        elements.clearFileButton.addEventListener('click', () => {
+            clearSelectedFile();
+            setFeedback('');
+        });
+        elements.form.addEventListener('submit', handleSend);
+
+        if (elements.handoverButton) {
+            elements.handoverButton.addEventListener('click', handleHandover);
+        }
+
+        document.addEventListener('click', handleDocumentClick);
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') {
+                return;
+            }
+
+            if (state.emojiOpen || state.threadMenuOpen) {
+                closeTransientPanels();
+                return;
+            }
+
+            if (state.isOpen) {
+                setWidgetOpen(false);
+            }
+        });
+    }
+
+    function createWidgetMarkup() {
+        return `
+            <section class="chat-widget" id="chat-widget-root" hidden>
+                <button type="button" class="chat-widget__launcher" id="chat-widget-launcher" aria-expanded="false" aria-controls="chat-widget-panel">
+                    <span class="chat-widget__launcher-icon"><i class="fas fa-comments" aria-hidden="true"></i></span>
+                    <span class="chat-widget__launcher-copy">
+                        <strong>Secure Chat</strong>
+                        <span id="chat-widget-launcher-label">Open handover chat</span>
+                    </span>
+                    <span class="chat-widget__launcher-count" id="chat-widget-launcher-count">0</span>
+                </button>
+
+                <section class="chat-widget__panel" id="chat-widget-panel" hidden aria-label="Secure handover chat widget">
+                    <header class="chat-widget__panel-header">
+                        <div class="chat-widget__panel-title">
+                            <span class="chat-widget__eyebrow">Secure Handover Chat</span>
+                            <button type="button" class="chat-widget__thread-toggle" id="chat-widget-thread-toggle">
+                                <i class="fas fa-layer-group" aria-hidden="true"></i>
+                                Chats
+                            </button>
+                        </div>
+                        <div class="chat-widget__panel-actions">
+                            <span class="chat-status-badge chat-status-badge--idle" id="chat-widget-status-badge">Idle</span>
+                            ${roleScope === 'staff' ? `
+                                <button id="chat-widget-handover-btn" class="btn btn-success handover-btn" hidden>
+                                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                                    Verify & Handover
+                                </button>
+                            ` : ''}
+                            <button type="button" class="chat-widget__icon-btn" id="chat-widget-minimize-btn" aria-label="Minimize chat">
+                                <i class="fas fa-minus" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="chat-widget__thread-menu" id="chat-widget-thread-menu" hidden>
+                        <div class="chat-widget__thread-list" id="chat-widget-thread-list"></div>
+                        <p class="chat-widget__thread-empty" id="chat-widget-thread-empty" hidden>No active chats available.</p>
+                    </div>
+
+                    <div class="chat-widget__context">
+                        <div id="chat-widget-item-preview" class="chat-item-preview" aria-hidden="true"></div>
+                        <div class="chat-widget__context-copy">
+                            <h3 id="chat-widget-title">Secure Handover Chat</h3>
+                            <p class="chat-header__meta" id="chat-widget-sub-info">Select an active chat to continue.</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages chat-widget__messages" id="chat-widget-messages">
+                        <div class="sys-message">Loading messages...</div>
+                    </div>
+
+                    <div class="chat-widget__composer">
+                        <p class="chat-widget__feedback" id="chat-widget-feedback" hidden></p>
+                        <div class="chat-widget__selected-file" id="chat-widget-selected-file" hidden>
+                            <i class="fas fa-paperclip" aria-hidden="true"></i>
+                            <div class="chat-widget__selected-file-copy">
+                                <strong id="chat-widget-selected-file-name"></strong>
+                                <span id="chat-widget-selected-file-meta"></span>
+                            </div>
+                            <button type="button" class="chat-widget__clear-file" id="chat-widget-clear-file" aria-label="Remove attached file">
+                                <i class="fas fa-times" aria-hidden="true"></i>
+                            </button>
+                        </div>
+
+                        <form class="chat-input-area chat-widget__composer-form" id="chat-widget-form">
+                            <div class="chat-widget__input-shell">
+                                <input type="text" id="chat-widget-input" placeholder="Write a message or send proof..." autocomplete="off">
+                                <div class="chat-widget__input-tools">
+                                    <button type="button" class="chat-widget__tool-btn" id="chat-widget-emoji-btn" aria-label="Add emoji">
+                                        <i class="far fa-face-smile" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" class="chat-widget__tool-btn" id="chat-widget-file-btn" aria-label="Attach proof file">
+                                        <i class="fas fa-paperclip" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                                <input type="file" id="chat-widget-file-input" class="chat-widget__file-input" accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar">
+                            </div>
+                            <button type="submit" id="chat-widget-send-btn" title="Send Message">
+                                <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                            </button>
+                        </form>
+
+                        <div class="chat-widget__emoji-picker" id="chat-widget-emoji-picker" hidden></div>
+                    </div>
+                </section>
+            </section>
+        `;
+    }
+
+    function injectWidget() {
+        if (document.getElementById('chat-widget-root')) {
+            return;
+        }
+
+        document.body.insertAdjacentHTML('beforeend', createWidgetMarkup());
+
+        elements.root = document.getElementById('chat-widget-root');
+        elements.launcher = document.getElementById('chat-widget-launcher');
+        elements.launcherLabel = document.getElementById('chat-widget-launcher-label');
+        elements.launcherCount = document.getElementById('chat-widget-launcher-count');
+        elements.panel = document.getElementById('chat-widget-panel');
+        elements.threadMenuButton = document.getElementById('chat-widget-thread-toggle');
+        elements.threadMenu = document.getElementById('chat-widget-thread-menu');
+        elements.threadList = document.getElementById('chat-widget-thread-list');
+        elements.threadEmpty = document.getElementById('chat-widget-thread-empty');
+        elements.minimizeButton = document.getElementById('chat-widget-minimize-btn');
+        elements.chatStatusBadge = document.getElementById('chat-widget-status-badge');
+        elements.chatTitle = document.getElementById('chat-widget-title');
+        elements.chatSubInfo = document.getElementById('chat-widget-sub-info');
+        elements.chatItemPreview = document.getElementById('chat-widget-item-preview');
+        elements.messages = document.getElementById('chat-widget-messages');
+        elements.feedback = document.getElementById('chat-widget-feedback');
+        elements.selectedFile = document.getElementById('chat-widget-selected-file');
+        elements.selectedFileName = document.getElementById('chat-widget-selected-file-name');
+        elements.selectedFileMeta = document.getElementById('chat-widget-selected-file-meta');
+        elements.clearFileButton = document.getElementById('chat-widget-clear-file');
+        elements.form = document.getElementById('chat-widget-form');
+        elements.input = document.getElementById('chat-widget-input');
+        elements.emojiButton = document.getElementById('chat-widget-emoji-btn');
+        elements.fileButton = document.getElementById('chat-widget-file-btn');
+        elements.fileInput = document.getElementById('chat-widget-file-input');
+        elements.sendButton = document.getElementById('chat-widget-send-btn');
+        elements.emojiPicker = document.getElementById('chat-widget-emoji-picker');
+        elements.handoverButton = document.getElementById('chat-widget-handover-btn');
+
+        renderEmojiPicker();
+        bindWidgetEvents();
+        syncWidgetVisibility();
+        syncComposerState();
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            return;
+        }
+
+        state.user = user;
+        injectWidget();
+        await subscribeToThreadList();
+
+        if (state.requestedChatId) {
+            selectChat(state.requestedChatId, { open: true });
+        } else if (state.threads.length && !state.currentChatId) {
+            selectChat(state.threads[0].id, { open: shouldOpenOnFirstLaunch() });
+        }
+
+        syncWidgetVisibility();
+        updateLauncher();
     });
 }

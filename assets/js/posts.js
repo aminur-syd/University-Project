@@ -602,7 +602,7 @@ function renderItemDetail(item) {
                     }
                 });
 
-                window.location.href = 'user/chat.html?chatId=' + chatRef.id;
+                window.location.href = 'user/dashboard.html?chatId=' + chatRef.id;
             } catch (error) {
                 console.error('Error initiating handover process:', error);
                 alert('Failed to initiate claim. Please try again.');
