@@ -353,7 +353,7 @@ async function renderItems(items, container) {
                 <h3 class="item-title">${itemTitle}</h3>
                 <p class="item-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(displayLocation)}</p>
                 <p class="item-date"><i class="far fa-calendar-alt"></i> ${escapeHtml(displayDate)}</p>
-                <a href="item-details.html?id=${docSnap.id}" class="btn btn-outline item-card__action">View Details</a>
+                <a href="/item-details?id=${docSnap.id}" class="btn btn-outline item-card__action">View Details</a>
             </div>
         `;
         container.appendChild(card);
@@ -543,7 +543,7 @@ function renderItemDetail(item) {
     if (claimBtn && isClaimAvailable) {
         claimBtn.addEventListener('click', async () => {
             if (!auth.currentUser) {
-                window.location.href = 'login.html';
+                window.location.href = '/login';
                 return;
             }
 
@@ -602,7 +602,7 @@ function renderItemDetail(item) {
                     }
                 });
 
-                window.location.href = 'user/dashboard.html?chatId=' + chatRef.id;
+                window.location.href = '/user/dashboard?chatId=' + chatRef.id;
             } catch (error) {
                 console.error('Error initiating handover process:', error);
                 alert('Failed to initiate claim. Please try again.');
@@ -830,7 +830,7 @@ if (createPostForm) {
         const user = createPostCurrentUser;
         if (!user) {
             setFormMessage(submitMessage, 'You must be logged in to post. Redirecting to login...', 'error');
-            window.location.href = '../login.html';
+            window.location.href = '/login';
             return;
         }
 
@@ -899,12 +899,12 @@ if (createPostForm) {
                 if (closeBtn) {
                     closeBtn.onclick = () => {
                         successModal.classList.remove('active');
-                        window.location.href = '../index.html';
+                        window.location.href = '/';
                     };
                 }
             } else {
                 alert('Success! Your post has been submitted.');
-                window.location.href = '../index.html';
+                window.location.href = '/';
             }
         } catch (error) {
             console.error('Error creating post:', error);
@@ -1145,7 +1145,7 @@ if (myPostsList) {
                         </div>
                     </div>
                     <div class="post-item__actions">
-                        <a href="../item-details.html?id=${docSnap.id}" class="btn btn-secondary">View</a>
+                        <a href="/item-details?id=${docSnap.id}" class="btn btn-secondary">View</a>
                     </div>
                 `;
                 myPostsList.appendChild(card);

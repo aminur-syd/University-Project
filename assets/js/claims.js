@@ -91,7 +91,7 @@ document.addEventListener('submit', async (event) => {
         });
 
         alert('Claim submitted successfully! Staff will review it.');
-        window.location.href = 'user/my-claims.html';
+        window.location.href = '/user/my-claims';
     } catch (error) {
         console.error('Error submitting claim:', error);
         alert('Error submitting claim: ' + error.message);
@@ -131,7 +131,7 @@ if (myClaimsList) {
                         <span class="${getClaimStatusClass(claim.status)}">Status: ${claim.status}</span>
                     </div>
                     <div class="post-item__actions">
-                        <a href="../item-details.html?id=${claim.itemId}" class="btn btn-secondary">View Item</a>
+                        <a href="/item-details?id=${claim.itemId}" class="btn btn-secondary">View Item</a>
                     </div>
                 `;
                 myClaimsList.appendChild(card);

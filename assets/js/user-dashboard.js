@@ -58,7 +58,7 @@ async function resolveChatImageUrl(chat) {
 
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
-        window.location.href = '../login.html';
+        window.location.href = '/login';
         return;
     }
 
@@ -124,7 +124,7 @@ onAuthStateChanged(auth, async (user) => {
                         </span>
                     </td>
                     <td>
-                        <a href="dashboard.html?chatId=${docSnap.id}" class="btn btn-outline btn-sm">Open Secure Chat</a>
+                        <a href="/user/dashboard?chatId=${docSnap.id}" class="btn btn-outline btn-sm">Open Secure Chat</a>
                     </td>
                 </tr>
             `;

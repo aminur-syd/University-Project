@@ -24,19 +24,19 @@
         <!-- Navbar -->
         <nav class="navbar">
             <div class="nav-container">
-                <a href="index.html" class="logo">
+                <a href="/" class="logo">
                     <img src="assets/images/logo1.png" alt="WUB Lost & Found" class="logo-img">
                 </a>
                 <div class="nav-links">
-                    <a href="index.html" class="active">Home</a>
-                    <a href="browse.html">Browse Items</a>
-                    <a href="cover-page.html">Create Cover Page</a>
+                    <a href="/" class="active">Home</a>
+                    <a href="/browse">Browse Items</a>
+                    <a href="/cover-page">Create Cover Page</a>
                     <div id="auth-links">
-                        <a href="login.html" class="btn btn-ghost">Login</a>
-                        <a href="register.html" class="btn btn-primary">Get Started</a>
+                        <a href="/login" class="btn btn-ghost">Login</a>
+                        <a href="/register" class="btn btn-primary">Get Started</a>
                     </div>
                     <div id="user-links" hidden>
-                        <a href="user/dashboard.html" id="dashboard-link">Dashboard</a>
+                        <a href="/user/dashboard" id="dashboard-link">Dashboard</a>
                         <span id="welcome-msg" class="nav-welcome"></span>
                         <button id="logout-btn" class="btn btn-outline-dark">Logout</button>
                     </div>
@@ -57,10 +57,10 @@
                 <p>The secure and official Lost &amp; Found service for WUB students, faculty, and staff. Report lost
                     items or post found property in seconds for verified handover.</p>
                 <div class="hero-buttons">
-                    <a href="user/create-post.html?type=lost" class="btn btn-lg btn-primary"><i
+                    <a href="/user/create-post?type=lost" class="btn btn-lg btn-primary"><i
                             class="fas fa-search-location"></i> I
                         Lost Something</a>
-                    <a href="user/create-post.html?type=found" class="btn btn-lg btn-secondary"><i
+                    <a href="/user/create-post?type=found" class="btn btn-lg btn-secondary"><i
                             class="fas fa-hand-holding-heart"></i> I
                         Found
                         Something</a>
@@ -144,7 +144,7 @@
                         <p class="section-note">Help your peers find their lost belongings. Have you seen
                             these?</p>
                     </div>
-                    <a href="browse.html?type=lost" class="view-all-btn">View All Lost Items <i
+                    <a href="/browse?type=lost" class="view-all-btn">View All Lost Items <i
                             class="fas fa-arrow-right"></i></a>
                 </div>
                 <div class="items-grid" id="latest-lost-grid" data-aos="fade-up" data-aos-delay="200">
@@ -162,7 +162,7 @@
                         <p class="section-note">Did you lose something? See if anyone has safely turned it
                             in.</p>
                     </div>
-                    <a href="browse.html?type=found" class="view-all-btn">View All Found Items <i
+                    <a href="/browse?type=found" class="view-all-btn">View All Found Items <i
                             class="fas fa-arrow-right"></i></a>
                 </div>
                 <!-- Important: We use a specific ID to target this grid in JavaScript -->
@@ -211,7 +211,7 @@
                 <h2>Have you found something at WUB?</h2>
                 <p>Report found items quickly and help the World University of Bangladesh (WUB) community reconnect
                     with their valuables.</p>
-                <a href="user/create-post.html" class="btn btn-lg btn-white">Report Now</a>
+                <a href="/user/create-post" class="btn btn-lg btn-white">Report Now</a>
             </div>
         </section>
 
@@ -296,11 +296,11 @@
             <div class="footer-col">
                 <h4>Quick Links</h4>
                 <ul>
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="browse.html">Browse</a></li>
-                    <li><a href="cover-page.html">Create Cover Page</a></li>
-                    <li><a href="login.html">Login</a></li>
-                    <li><a href="register.html">Register</a></li>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/browse">Browse</a></li>
+                    <li><a href="/cover-page">Create Cover Page</a></li>
+                    <li><a href="/login">Login</a></li>
+                    <li><a href="/register">Register</a></li>
                 </ul>
             </div>
             <div class="footer-col">

@@ -39,9 +39,15 @@ const authLinks = document.getElementById('auth-links');
 const userLinks = document.getElementById('user-links');
 
 const actionCodeSettings = {
-    url: `${window.location.origin}/action.html`,
+    url: `${window.location.origin}/action`,
     handleCodeInApp: false
 };
+
+function getDashboardPath(role = 'user') {
+    if (role === 'admin') return '/admin/dashboard';
+    if (role === 'staff') return '/staff/dashboard';
+    return '/user/dashboard';
+}
 
 function setHidden(element, hidden) {
     if (element) {
@@ -166,9 +172,7 @@ if (verifyCodeBtn) {
             }
 
             const role = userDoc.exists() ? userDoc.data().role : 'user';
-            if (role === 'admin') window.location.href = 'admin/dashboard.html';
-            else if (role === 'staff') window.location.href = 'staff/dashboard.html';
-            else window.location.href = 'user/dashboard.html';
+            window.location.href = getDashboardPath(role);
         } catch (error) {
             console.error('OTP verification failed:', error);
             alert('Incorrect code');
@@ -196,9 +200,7 @@ if (googleBtn) {
             }
 
             const role = userDoc.exists() ? userDoc.data().role : 'user';
-            if (role === 'admin') window.location.href = 'admin/dashboard.html';
-            else if (role === 'staff') window.location.href = 'staff/dashboard.html';
-            else window.location.href = 'user/dashboard.html';
+            window.location.href = getDashboardPath(role);
         } catch (error) {
             console.error('Google Sign-In Error:', error);
             alert('Google Sign-In failed: ' + error.message);
@@ -411,7 +413,7 @@ if (registerForm) {
                 <i class="fas fa-envelope-open-text auth-success__icon"></i>
                 <h3 class="auth-success__title">Check your email!</h3>
                 <p class="auth-success__copy">We've sent a verification link to <strong>${email}</strong>. Please click the link to activate your account before logging in.</p>
-                <a href="login.html" class="btn btn-primary w-full">Go to Login</a>
+                <a href="/login" class="btn btn-primary w-full">Go to Login</a>
             `;
             registerForm.parentNode.insertBefore(successCard, registerForm.nextSibling);
         } catch (error) {
@@ -472,11 +474,9 @@ if (loginForm) {
             const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists()) {
                 const role = userDoc.data().role;
-                if (role === 'admin') window.location.href = 'admin/dashboard.html';
-                else if (role === 'staff') window.location.href = 'staff/dashboard.html';
-                else window.location.href = 'user/dashboard.html';
+                window.location.href = getDashboardPath(role);
             } else {
-                window.location.href = 'user/dashboard.html';
+                window.location.href = getDashboardPath();
             }
         } catch (error) {
             console.error(error);
@@ -501,7 +501,7 @@ if (logoutBtn) {
             const path = window.location.pathname;
 
             if (path.includes('/user/') || path.includes('/staff/') || path.includes('/admin/')) {
-                window.location.href = '../index.html';
+                window.location.href = '/';
             } else {
                 window.location.reload();
             }
@@ -537,7 +537,7 @@ onAuthStateChanged(auth, async (user) => {
                 const name = getResolvedUserName(user, userData);
 
                 if (welcomeMsg) welcomeMsg.textContent = `Welcome, ${name}`;
-                if (dashboardLink) dashboardLink.href = `${role}/dashboard.html`;
+                if (dashboardLink) dashboardLink.href = getDashboardPath(role);
                 if (userNameLabel) userNameLabel.textContent = name;
             }
         } else if (authLinks && userLinks) {
@@ -549,7 +549,7 @@ onAuthStateChanged(auth, async (user) => {
     const path = window.location.pathname;
     if (path.includes('/user/') || path.includes('/staff/') || path.includes('/admin/')) {
         if (!user) {
-            window.location.href = '../login.html';
+            window.location.href = '/login';
             return;
         }
 
@@ -558,9 +558,9 @@ onAuthStateChanged(auth, async (user) => {
             const role = userDoc.data().role;
 
             if (path.includes('/admin/') && role !== 'admin') {
-                window.location.href = '../index.html';
+                window.location.href = '/';
             } else if (path.includes('/staff/') && role !== 'staff' && role !== 'admin') {
-                window.location.href = '../index.html';
+                window.location.href = '/';
             }
         }
     }

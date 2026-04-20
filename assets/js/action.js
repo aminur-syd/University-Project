@@ -244,11 +244,11 @@ function renderResetForm() {
                 type: 'success',
                 title: 'Password Updated',
                 message: 'Your password has been reset successfully. You can now sign in.',
-                primary: { label: 'Go to Login', href: 'login.html' }
+                primary: { label: 'Go to Login', href: '/login' }
             });
 
             window.setTimeout(() => {
-                window.location.href = 'login.html';
+                window.location.href = '/login';
             }, 3000);
         } catch (error) {
             setInlineStatus(formStatusMessage, mapResetSubmitError(error));
@@ -271,15 +271,15 @@ async function handleVerifyEmail() {
             type: 'success',
             title: 'Email Verified',
             message: 'Thank you for verifying your email address. Your account is now fully active.',
-            primary: { label: 'Go to Login', href: 'login.html' }
+            primary: { label: 'Go to Login', href: '/login' }
         });
     } catch (error) {
         setStatus({
             type: 'error',
             title: 'Verification Failed',
             message: mapActionError(error, 'We could not verify your email. Please request a new verification link.'),
-            primary: { label: 'Go to Login', href: 'login.html' },
-            secondary: { label: 'Back to Registration', href: 'register.html' }
+            primary: { label: 'Go to Login', href: '/login' },
+            secondary: { label: 'Back to Registration', href: '/register' }
         });
     }
 }
@@ -297,7 +297,7 @@ async function handleResetPassword() {
             type: 'form',
             title: 'Reset Your Password',
             message: 'Enter a new password for your account.',
-            secondary: { label: 'Back to Login', href: 'login.html' }
+            secondary: { label: 'Back to Login', href: '/login' }
         });
         renderResetForm();
     } catch (error) {
@@ -305,7 +305,7 @@ async function handleResetPassword() {
             type: 'error',
             title: 'Invalid or Expired Link',
             message: mapActionError(error, 'This password reset link is invalid or expired. Please request a new one.'),
-            primary: { label: 'Go to Login', href: 'login.html' }
+            primary: { label: 'Go to Login', href: '/login' }
         });
     }
 }
@@ -315,7 +315,7 @@ function handleUnsupportedAction() {
         type: 'error',
         title: 'Unsupported Action',
         message: 'This action type is not supported by this page.',
-        primary: { label: 'Go to Login', href: 'login.html' }
+        primary: { label: 'Go to Login', href: '/login' }
     });
 }
 
@@ -324,8 +324,8 @@ function handleInvalidActionLink() {
         type: 'error',
         title: 'Invalid Action Link',
         message: 'Missing or invalid action parameters. Please use the link from your email.',
-        primary: { label: 'Go to Login', href: 'login.html' },
-        secondary: { label: 'Back to Registration', href: 'register.html' }
+        primary: { label: 'Go to Login', href: '/login' },
+        secondary: { label: 'Back to Registration', href: '/register' }
     });
 }
 

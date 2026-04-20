@@ -23,12 +23,13 @@ import {
 
 const pathName = window.location.pathname;
 const searchParams = new URLSearchParams(window.location.search);
+const roleScope = pathName.includes('/staff/') ? 'staff' : pathName.includes('/user/') ? 'user' : null;
+const dashboardPath = roleScope ? `/${roleScope}/dashboard` : null;
 
-if (pathName.endsWith('/user/chat.html') || pathName.endsWith('/staff/chat.html')) {
-    window.location.replace(`dashboard.html${window.location.search}${window.location.hash}`);
+if (dashboardPath && /\/(?:user|staff)\/chat(?:\.html)?$/.test(pathName)) {
+    window.location.replace(`${dashboardPath}${window.location.search}${window.location.hash}`);
 }
 
-const roleScope = pathName.includes('/staff/') ? 'staff' : pathName.includes('/user/') ? 'user' : null;
 const requestedChatId = searchParams.get('chatId');
 
 if (!roleScope) {

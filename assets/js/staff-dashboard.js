@@ -94,7 +94,7 @@ onAuthStateChanged(auth, async (user) => {
                     </td>
                     <td>${escapeHtml(chat.userName || 'Unknown User')}</td>
                     <td>
-                        <a href="dashboard.html?chatId=${docSnap.id}" class="btn btn-outline btn-sm">
+                        <a href="/staff/dashboard?chatId=${docSnap.id}" class="btn btn-outline btn-sm">
                             <i class="fas fa-reply"></i>
                             Open Chat & Verify
                         </a>

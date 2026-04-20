@@ -97,7 +97,7 @@ if (pendingPostsList) {
                             <p><strong>Posted by:</strong> ${item.creatorName || 'Unknown User'}</p>
                             <p>${item.description || 'No description provided.'}</p>
                             <p class="post-item__meta">${item.date} | ${item.location}</p>
-                            <a href="../item-details.html?id=${docSnap.id}" target="_blank" class="post-item__link">
+                            <a href="/item-details?id=${docSnap.id}" target="_blank" class="post-item__link">
                                 View Details <i class="fas fa-external-link-alt"></i>
                             </a>
                         </div>
@@ -197,7 +197,7 @@ if (pendingClaimsList) {
                             <span class="claim-token__value">${claim.claimToken || 'N/A'}</span>
                         </p>
                         <p class="post-item__meta">
-                            <a href="../item-details.html?id=${claim.itemId}" target="_blank" class="post-item__link">
+                            <a href="/item-details?id=${claim.itemId}" target="_blank" class="post-item__link">
                                 View Original Post <i class="fas fa-external-link-alt"></i>
                             </a>
                         </p>
