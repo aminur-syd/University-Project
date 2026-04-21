@@ -660,10 +660,14 @@ if (!roleScope) {
         }
 
         if (!state.currentChatDoc) {
+            if (elements.chatHeaderItem) {
+                elements.chatHeaderItem.hidden = true;
+            }
+
             elements.chatEyebrow.textContent = 'Secure Handover Chat';
             elements.chatTitle.textContent = 'Secure Handover Chat';
-            elements.chatSubInfo.textContent = 'Select a conversation to continue.';
-            elements.chatStatusBadge.hidden = false;
+            elements.chatSubInfo.textContent = isStaffScope ? '' : 'Select a conversation to continue.';
+            elements.chatStatusBadge.hidden = isStaffScope;
             elements.chatStatusBadge.textContent = 'Idle';
             elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--idle';
             elements.chatItemPreview.innerHTML = '';
@@ -677,19 +681,19 @@ if (!roleScope) {
             return;
         }
 
+        if (elements.chatHeaderItem) {
+            elements.chatHeaderItem.hidden = false;
+        }
+
         elements.chatEyebrow.textContent = isStaffScope
             ? (state.currentChatDoc.userName || 'Unknown User')
             : 'Secure Handover Chat';
         elements.chatTitle.textContent = state.currentChatDoc.itemTitle || 'Untitled Item';
 
-        if (state.currentChatDoc.status === 'closed') {
+        if (isStaffScope) {
+            elements.chatSubInfo.textContent = '';
+        } else if (state.currentChatDoc.status === 'closed') {
             elements.chatSubInfo.textContent = 'Ownership has been verified and the handover is complete.';
-        } else if (isStaffScope) {
-            if (state.currentChatReadOnly) {
-                elements.chatSubInfo.textContent = '';
-            } else {
-                elements.chatSubInfo.textContent = '';
-            }
         } else {
             elements.chatSubInfo.textContent = state.currentChatDoc.staffId
                 ? 'Connected to staff. Send proof or ask for updates here.'
@@ -1275,34 +1279,51 @@ if (!roleScope) {
                 </button>
 
                 <section class="chat-widget__panel" id="chat-widget-panel" hidden aria-label="Secure handover chat widget">
-                    <header class="chat-widget__panel-header">
-                        <div class="chat-widget__panel-title">
-                            <span class="chat-widget__eyebrow" id="chat-widget-eyebrow">Secure Handover Chat</span>
-                            ${isStaffScope ? '' : `
+                    <header class="chat-widget__panel-header${isStaffScope ? ' chat-widget__panel-header--staff' : ''}">
+                        ${isStaffScope ? `
+                            <div class="chat-widget__panel-head-row">
+                                <span class="chat-widget__eyebrow" id="chat-widget-eyebrow">Secure Handover Chat</span>
+                                <div class="chat-widget__panel-top-actions">
+                                    <span class="chat-status-badge chat-status-badge--idle" id="chat-widget-status-badge" hidden>Idle</span>
+                                    <button type="button" class="chat-widget__icon-btn" id="chat-widget-minimize-btn" aria-label="Minimize chat">
+                                        <i class="fas fa-minus" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chat-widget__panel-subrow">
+                                <div class="chat-widget__header-item" id="chat-widget-header-item" hidden>
+                                    <div id="chat-widget-item-preview" class="chat-item-preview chat-item-preview--compact" aria-hidden="true"></div>
+                                    <div class="chat-widget__header-item-copy">
+                                        <h3 id="chat-widget-title">Secure Handover Chat</h3>
+                                        <p class="chat-header__meta" id="chat-widget-sub-info"></p>
+                                    </div>
+                                </div>
+                                <div class="chat-widget__panel-actions chat-widget__panel-actions--staff">
+                                    <button type="button" class="chat-widget__thread-toggle chat-widget__thread-toggle--compact" id="chat-widget-thread-toggle">
+                                        <i class="fas fa-layer-group" aria-hidden="true"></i>
+                                        Chats
+                                    </button>
+                                    <button id="chat-widget-handover-btn" class="btn btn-success handover-btn" hidden>
+                                        <i class="fas fa-check-circle" aria-hidden="true"></i>
+                                        Verified
+                                    </button>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="chat-widget__panel-title">
+                                <span class="chat-widget__eyebrow" id="chat-widget-eyebrow">Secure Handover Chat</span>
                                 <button type="button" class="chat-widget__thread-toggle" id="chat-widget-thread-toggle">
                                     <i class="fas fa-layer-group" aria-hidden="true"></i>
                                     Chats
                                 </button>
-                            `}
-                        </div>
-                        <div class="chat-widget__panel-actions">
-                            <span class="chat-status-badge chat-status-badge--idle" id="chat-widget-status-badge">Idle</span>
-                            ${isStaffScope ? `
-                                <button id="chat-widget-handover-btn" class="btn btn-success handover-btn" hidden>
-                                    <i class="fas fa-check-circle" aria-hidden="true"></i>
-                                    Verify & Handover
+                            </div>
+                            <div class="chat-widget__panel-actions">
+                                <span class="chat-status-badge chat-status-badge--idle" id="chat-widget-status-badge">Idle</span>
+                                <button type="button" class="chat-widget__icon-btn" id="chat-widget-minimize-btn" aria-label="Minimize chat">
+                                    <i class="fas fa-minus" aria-hidden="true"></i>
                                 </button>
-                            ` : ''}
-                            <button type="button" class="chat-widget__icon-btn" id="chat-widget-minimize-btn" aria-label="Minimize chat">
-                                <i class="fas fa-minus" aria-hidden="true"></i>
-                            </button>
-                            ${isStaffScope ? `
-                                <button type="button" class="chat-widget__thread-toggle chat-widget__thread-toggle--compact" id="chat-widget-thread-toggle">
-                                    <i class="fas fa-layer-group" aria-hidden="true"></i>
-                                    Chats
-                                </button>
-                            ` : ''}
-                        </div>
+                            </div>
+                        `}
                     </header>
 
                     <div class="chat-widget__thread-menu" id="chat-widget-thread-menu" hidden>
@@ -1310,13 +1331,15 @@ if (!roleScope) {
                         <p class="chat-widget__thread-empty" id="chat-widget-thread-empty" hidden>No active chats available.</p>
                     </div>
 
-                    <div class="chat-widget__context">
-                        <div id="chat-widget-item-preview" class="chat-item-preview" aria-hidden="true"></div>
-                        <div class="chat-widget__context-copy">
-                            <h3 id="chat-widget-title">Secure Handover Chat</h3>
-                            <p class="chat-header__meta" id="chat-widget-sub-info">Select an active chat to continue.</p>
+                    ${isStaffScope ? '' : `
+                        <div class="chat-widget__context">
+                            <div id="chat-widget-item-preview" class="chat-item-preview" aria-hidden="true"></div>
+                            <div class="chat-widget__context-copy">
+                                <h3 id="chat-widget-title">Secure Handover Chat</h3>
+                                <p class="chat-header__meta" id="chat-widget-sub-info">Select an active chat to continue.</p>
+                            </div>
                         </div>
-                    </div>
+                    `}
 
                     <div class="chat-messages chat-widget__messages" id="chat-widget-messages">
                         <div class="sys-message">Loading messages...</div>
@@ -1379,6 +1402,7 @@ if (!roleScope) {
         elements.threadEmpty = document.getElementById('chat-widget-thread-empty');
         elements.minimizeButton = document.getElementById('chat-widget-minimize-btn');
         elements.chatStatusBadge = document.getElementById('chat-widget-status-badge');
+        elements.chatHeaderItem = document.getElementById('chat-widget-header-item');
         elements.chatTitle = document.getElementById('chat-widget-title');
         elements.chatSubInfo = document.getElementById('chat-widget-sub-info');
         elements.chatItemPreview = document.getElementById('chat-widget-item-preview');
