@@ -17,18 +17,19 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/fi
 
 const pathName = window.location.pathname;
 const searchParams = new URLSearchParams(window.location.search);
-const roleScope = pathName.includes('/staff/') ? 'staff' : pathName.includes('/user/') ? 'user' : null;
+const roleScope = pathName.includes('/admin/') ? 'admin' : pathName.includes('/staff/') ? 'staff' : pathName.includes('/user/') ? 'user' : null;
+const isStaffScope = roleScope === 'staff' || roleScope === 'admin';
 const dashboardPath = roleScope ? `/${roleScope}/dashboard` : null;
 const CHAT_ATTACHMENT_API_BASE = '/api/chat-attachments';
 
-if (dashboardPath && /\/(?:user|staff)\/chat(?:\.html)?$/.test(pathName)) {
+if (dashboardPath && /\/(?:user|staff|admin)\/chat(?:\.html)?$/.test(pathName)) {
     window.location.replace(`${dashboardPath}${window.location.search}${window.location.hash}`);
 }
 
 const requestedChatId = searchParams.get('chatId');
 
 if (!roleScope) {
-    // This embeddable widget only runs on logged-in user and staff pages.
+    // This embeddable widget only runs on logged-in user, staff, and admin pages.
 } else {
     const CHAT_ITEM_FALLBACK_IMAGE = 'https://via.placeholder.com/120x120?text=No+Image';
     const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
@@ -371,7 +372,7 @@ if (!roleScope) {
     function getThreadLabel(chat) {
         const isClosed = chat.status === 'closed';
 
-        if (roleScope === 'staff') {
+        if (isStaffScope) {
             if (isClosed) {
                 return 'Closed';
             }
@@ -582,7 +583,7 @@ if (!roleScope) {
         }
 
         if (elements.handoverButton) {
-            elements.handoverButton.hidden = !(roleScope === 'staff' && hasChat && !isClosed && !state.currentChatReadOnly);
+            elements.handoverButton.hidden = !(isStaffScope && hasChat && !isClosed && !state.currentChatReadOnly);
         }
     }
 
@@ -654,11 +655,12 @@ if (!roleScope) {
     }
 
     async function renderCurrentChatContext() {
-        if (!elements.chatTitle || !elements.chatSubInfo || !elements.chatStatusBadge || !elements.chatItemPreview) {
+        if (!elements.chatEyebrow || !elements.chatTitle || !elements.chatSubInfo || !elements.chatStatusBadge || !elements.chatItemPreview) {
             return;
         }
 
         if (!state.currentChatDoc) {
+            elements.chatEyebrow.textContent = 'Secure Handover Chat';
             elements.chatTitle.textContent = 'Secure Handover Chat';
             elements.chatSubInfo.textContent = 'Select a conversation to continue.';
             elements.chatStatusBadge.textContent = 'Idle';
@@ -674,21 +676,22 @@ if (!roleScope) {
             return;
         }
 
-        elements.chatTitle.textContent = state.currentChatDoc.itemTitle
-            ? `Claim: ${state.currentChatDoc.itemTitle}`
+        elements.chatEyebrow.textContent = isStaffScope
+            ? (state.currentChatDoc.userName || 'Unknown User')
             : 'Secure Handover Chat';
+        elements.chatTitle.textContent = state.currentChatDoc.itemTitle || 'Untitled Item';
 
         if (state.currentChatDoc.status === 'closed') {
             elements.chatSubInfo.textContent = 'Ownership has been verified and the handover is complete.';
             elements.chatStatusBadge.textContent = 'Closed';
             elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--closed';
-        } else if (roleScope === 'staff') {
+        } else if (isStaffScope) {
             if (state.currentChatReadOnly) {
                 elements.chatSubInfo.textContent = 'This chat is already assigned to another staff member.';
                 elements.chatStatusBadge.textContent = 'Assigned';
                 elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--readonly';
             } else {
-                elements.chatSubInfo.textContent = `Claimant: ${state.currentChatDoc.userName || 'Unknown User'}`;
+                elements.chatSubInfo.textContent = 'Review proof, verify ownership, and coordinate the handover here.';
                 elements.chatStatusBadge.textContent = 'Active';
                 elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--active';
             }
@@ -755,7 +758,7 @@ if (!roleScope) {
         if (snapshot.empty) {
             const emptyMessage = state.currentChatDoc?.status === 'closed'
                 ? 'This handover chat has been closed.'
-                : roleScope === 'staff'
+                : isStaffScope
                     ? 'No messages yet. Ask the claimant for proof details when you are ready.'
                     : 'Secure chat started. Staff will review your case here. You can send proof documents anytime.';
             elements.messages.innerHTML = `<div class="sys-message">${escapeHtml(emptyMessage)}</div>`;
@@ -820,7 +823,7 @@ if (!roleScope) {
     }
 
     async function claimChatIfNeeded(chatRef, chatData) {
-        if (roleScope !== 'staff' || !state.user || chatData.staffId || claimedChatIds.has(chatData.id)) {
+        if (!isStaffScope || !state.user || chatData.staffId || claimedChatIds.has(chatData.id)) {
             return;
         }
 
@@ -893,7 +896,7 @@ if (!roleScope) {
             await claimChatIfNeeded(chatRef, chatData);
 
             state.currentChatDoc = chatData;
-            state.currentChatReadOnly = roleScope === 'staff' && Boolean(chatData.staffId && chatData.staffId !== state.user.uid);
+            state.currentChatReadOnly = isStaffScope && Boolean(chatData.staffId && chatData.staffId !== state.user.uid);
 
             if (state.currentChatReadOnly) {
                 setFeedback('This chat is already assigned to another staff member. Viewing is read-only.', 'info');
@@ -951,7 +954,7 @@ if (!roleScope) {
 
         const threadQuery = query(
             collection(db, 'chats'),
-            where(roleScope === 'staff' ? 'staffId' : 'userId', '==', state.user.uid)
+            where(isStaffScope ? 'staffId' : 'userId', '==', state.user.uid)
         );
 
         state.threadsUnsubscribe = onSnapshot(threadQuery, async (snapshot) => {
@@ -1104,7 +1107,7 @@ if (!roleScope) {
     }
 
     async function handleHandover() {
-        if (!state.currentChatId || !state.currentChatDoc || roleScope !== 'staff' || state.currentChatReadOnly) {
+        if (!state.currentChatId || !state.currentChatDoc || !isStaffScope || state.currentChatReadOnly) {
             return;
         }
 
@@ -1270,7 +1273,7 @@ if (!roleScope) {
                 <section class="chat-widget__panel" id="chat-widget-panel" hidden aria-label="Secure handover chat widget">
                     <header class="chat-widget__panel-header">
                         <div class="chat-widget__panel-title">
-                            <span class="chat-widget__eyebrow">Secure Handover Chat</span>
+                            <span class="chat-widget__eyebrow" id="chat-widget-eyebrow">Secure Handover Chat</span>
                             <button type="button" class="chat-widget__thread-toggle" id="chat-widget-thread-toggle">
                                 <i class="fas fa-layer-group" aria-hidden="true"></i>
                                 Chats
@@ -1278,7 +1281,7 @@ if (!roleScope) {
                         </div>
                         <div class="chat-widget__panel-actions">
                             <span class="chat-status-badge chat-status-badge--idle" id="chat-widget-status-badge">Idle</span>
-                            ${roleScope === 'staff' ? `
+                            ${isStaffScope ? `
                                 <button id="chat-widget-handover-btn" class="btn btn-success handover-btn" hidden>
                                     <i class="fas fa-check-circle" aria-hidden="true"></i>
                                     Verify & Handover
@@ -1357,6 +1360,7 @@ if (!roleScope) {
         elements.launcherLabel = document.getElementById('chat-widget-launcher-label');
         elements.launcherCount = document.getElementById('chat-widget-launcher-count');
         elements.panel = document.getElementById('chat-widget-panel');
+        elements.chatEyebrow = document.getElementById('chat-widget-eyebrow');
         elements.threadMenuButton = document.getElementById('chat-widget-thread-toggle');
         elements.threadMenu = document.getElementById('chat-widget-thread-menu');
         elements.threadList = document.getElementById('chat-widget-thread-list');
