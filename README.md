@@ -19,9 +19,9 @@ Users can submit reports for both lost and found items. They can browse availabl
 2. Set `SUPABASE_SERVICE_ROLE_KEY` in `.env`
 3. Run `npm install`
 4. Run `npm start`
-5. Open `http://localhost:3000`
+5. Open `http://localhost:3001`
 
-If port `3000` is already in use, start the server with another port, for example:
+If you need to override the default port, start the server with another port, for example:
 
 ```bash
 PORT=3001 npm start
