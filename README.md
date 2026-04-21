@@ -27,17 +27,23 @@ If you need to override the default port, start the server with another port, fo
 PORT=3001 npm start
 ```
 
-## Chat Attachments
-Chat attachments now upload through the Node server and are stored in the Supabase `Chat-proofs` bucket.
+## Supabase Storage
+Chat attachments upload through the Node server and are stored in the Supabase `Chat-proofs` bucket.
+Item/post images also upload through the Node server and are stored in the Supabase `item-images` bucket.
 
 Required environment variables:
 
 ```env
 SUPABASE_URL=https://stogzhtvnvobmhvoqxuy.supabase.co
 SUPABASE_BUCKET=Chat-proofs
+SUPABASE_ITEM_BUCKET=item-images
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 FIREBASE_PROJECT_ID=lost-and-found-16023
 ```
+
+Storage requirements:
+- `Chat-proofs` should stay private.
+- `item-images` should be a public bucket so item photos can render on listings and detail pages.
 
 The `SUPABASE_SERVICE_ROLE_KEY` must stay on the server only.
 

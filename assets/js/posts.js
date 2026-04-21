@@ -36,9 +36,7 @@ const FALLBACK_CARD_IMAGE = 'https://via.placeholder.com/300x200?text=No+Image';
 const FALLBACK_DETAIL_IMAGE = 'https://via.placeholder.com/600x400?text=No+Image';
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const FIREBASE_OPERATION_TIMEOUT_MS = 15000;
-// Client-side demo/project config only. This browser-exposed key should be replaced manually for this student/demo setup.
-const IMGBB_API_KEY = 'b7d7a635920b14b3b0a9868f055eb0b9';
-const IMGBB_UPLOAD_ENDPOINT = 'https://api.imgbb.com/1/upload';
+const ITEM_IMAGE_API_BASE = '/api/item-images';
 
 let createPostCurrentUser = auth.currentUser;
 let hasCreatePostAuthResolved = !createPostForm;
@@ -106,14 +104,6 @@ function getReviewStatusClass(status) {
     if (status === 'approved') return 'status-label status-label--approved';
     if (status === 'rejected') return 'status-label status-label--rejected';
     return 'status-label status-label--pending';
-}
-
-function sanitizeFileName(fileName) {
-    return fileName
-        .toLowerCase()
-        .replace(/[^a-z0-9.-]+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
 }
 
 function validateImageFile(imageFile) {
@@ -222,53 +212,93 @@ async function resolveUserRole(user) {
     return 'user';
 }
 
-async function uploadItemImageToImgbb(imageFile) {
-    if (IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY') {
-        throw createFirebaseError(
-            'imgbb/not-configured',
-            'Image upload is not configured yet. Add your IMGBB API key and try again.'
-        );
+async function parseJsonResponse(response) {
+    const responseText = await response.text();
+
+    if (!responseText) {
+        return {};
     }
 
-    const formData = new FormData();
-    const safeFileName = sanitizeFileName(imageFile.name) || 'item-image';
+    try {
+        return JSON.parse(responseText);
+    } catch (error) {
+        return {
+            error: responseText
+        };
+    }
+}
 
-    formData.append('image', imageFile);
-    formData.append('name', safeFileName);
+async function getCreatePostAuthToken(user) {
+    if (!user) {
+        throw createFirebaseError('auth/missing-user', 'You must be logged in to post.');
+    }
+
+    return user.getIdToken();
+}
+
+async function uploadItemImageToSupabase(user, imageFile) {
+    const authToken = await getCreatePostAuthToken(user);
+    const formData = new FormData();
+    formData.append('file', imageFile);
 
     const uploadResponse = await withTimeout(
-        fetch(`${IMGBB_UPLOAD_ENDPOINT}?key=${encodeURIComponent(IMGBB_API_KEY)}`, {
+        fetch(`${ITEM_IMAGE_API_BASE}/upload`, {
             method: 'POST',
+            headers: {
+                Authorization: `Bearer ${authToken}`
+            },
             body: formData
         }),
         FIREBASE_OPERATION_TIMEOUT_MS,
         createFirebaseError(
-            'imgbb/timeout',
+            'item-image/timeout',
             'Image upload failed. Please try again.'
         )
     );
 
-    let responsePayload = null;
+    const responsePayload = await parseJsonResponse(uploadResponse);
 
-    try {
-        responsePayload = await uploadResponse.json();
-    } catch (error) {
-        throw createFirebaseError('imgbb/invalid-response', 'Image upload failed. Please try again.');
-    }
+    if (!uploadResponse.ok) {
+        if (uploadResponse.status === 401) {
+            throw createFirebaseError('unauthenticated', responsePayload?.error || 'You must be logged in to post.');
+        }
 
-    if (!uploadResponse.ok || !responsePayload?.success) {
         throw createFirebaseError(
-            'imgbb/upload-failed',
-            responsePayload?.error?.message || 'Image upload failed. Please try again.'
+            'item-image/upload-failed',
+            responsePayload?.error || 'Image upload failed. Please try again.'
         );
     }
 
-    const publicImageUrl = responsePayload?.data?.display_url || responsePayload?.data?.url;
-    if (!publicImageUrl) {
-        throw createFirebaseError('imgbb/missing-url', 'Image upload failed. Please try again.');
+    if (!responsePayload?.imageUrl || !responsePayload?.path) {
+        throw createFirebaseError('item-image/invalid-response', 'Image upload failed. Please try again.');
     }
 
-    return publicImageUrl;
+    return responsePayload;
+}
+
+async function deleteItemImageFromSupabase(user, filePath) {
+    if (!filePath) {
+        return;
+    }
+
+    const authToken = await getCreatePostAuthToken(user);
+    const deleteResponse = await fetch(`${ITEM_IMAGE_API_BASE}/delete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ path: filePath })
+    });
+
+    const responsePayload = await parseJsonResponse(deleteResponse);
+
+    if (!deleteResponse.ok) {
+        throw createFirebaseError(
+            'item-image/delete-failed',
+            responsePayload?.error || 'Could not delete the uploaded image.'
+        );
+    }
 }
 
 function getCreatePostErrorMessage(error, stage) {
@@ -280,12 +310,9 @@ function getCreatePostErrorMessage(error, stage) {
         case 'auth/invalid-user-token':
         case 'unauthenticated':
             return 'You must be logged in to post. Please sign in again.';
-        case 'imgbb/not-configured':
-            return 'Image upload is not configured yet. Add your IMGBB API key and try again.';
-        case 'imgbb/timeout':
-        case 'imgbb/invalid-response':
-        case 'imgbb/upload-failed':
-        case 'imgbb/missing-url':
+        case 'item-image/timeout':
+        case 'item-image/invalid-response':
+        case 'item-image/upload-failed':
             return 'Image upload failed. Please try again.';
         case 'permission-denied':
             return stage === 'save'
@@ -852,6 +879,8 @@ if (createPostForm) {
 
         setSubmitButtonState(submitBtn, 'Posting...', true);
         let stage = 'save';
+        let uploadedImagePath = '';
+        let itemSaved = false;
 
         try {
             let imageUrl = null;
@@ -859,7 +888,9 @@ if (createPostForm) {
             if (imageFile) {
                 stage = 'upload';
                 setSubmitButtonState(submitBtn, 'Uploading Image...', true);
-                imageUrl = await uploadItemImageToImgbb(imageFile);
+                const uploadedImage = await uploadItemImageToSupabase(user, imageFile);
+                imageUrl = uploadedImage.imageUrl;
+                uploadedImagePath = uploadedImage.path || '';
             }
 
             stage = 'save';
@@ -881,6 +912,7 @@ if (createPostForm) {
                 status: 'active',
                 createdAt: serverTimestamp()
             });
+            itemSaved = true;
 
             setFormMessage(submitMessage, 'Post submitted successfully!', 'success');
             createPostForm.reset();
@@ -908,6 +940,15 @@ if (createPostForm) {
             }
         } catch (error) {
             console.error('Error creating post:', error);
+
+            if (uploadedImagePath && !itemSaved) {
+                try {
+                    await deleteItemImageFromSupabase(user, uploadedImagePath);
+                } catch (cleanupError) {
+                    console.warn('Could not clean up uploaded item image:', cleanupError);
+                }
+            }
+
             const errorMessage = getCreatePostErrorMessage(error, stage);
             setFormMessage(submitMessage, errorMessage, 'error');
         } finally {

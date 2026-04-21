@@ -9,6 +9,7 @@ const ROOT_DIR = __dirname;
 const PORT = Number(process.env.PORT || 3000);
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://stogzhtvnvobmhvoqxuy.supabase.co';
 const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || 'Chat-proofs';
+const SUPABASE_ITEM_BUCKET = process.env.SUPABASE_ITEM_BUCKET || 'item-images';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const SUPABASE_SIGNED_URL_TTL_SECONDS = Math.max(
     60,
@@ -16,7 +17,9 @@ const SUPABASE_SIGNED_URL_TTL_SECONDS = Math.max(
 );
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'lost-and-found-16023';
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_ITEM_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const GOOGLE_SECURETOKEN_JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+const ITEM_IMAGE_PATH_PREFIX = 'item-images';
 
 const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
     'jpg',
@@ -55,10 +58,17 @@ const supabase = SUPABASE_SERVICE_ROLE_KEY
     })
     : null;
 
-const upload = multer({
+const attachmentUpload = multer({
     storage: multer.memoryStorage(),
     limits: {
         fileSize: MAX_ATTACHMENT_SIZE_BYTES
+    }
+});
+
+const itemImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: MAX_ITEM_IMAGE_SIZE_BYTES
     }
 });
 
@@ -91,6 +101,10 @@ function normalizeAttachmentPath(filePath) {
     }
 
     return normalizedPath;
+}
+
+function getAuthenticatedUserId(request) {
+    return sanitizePathSegment(request.authUser?.user_id || request.authUser?.sub || '');
 }
 
 function resolveAttachmentContentType(file) {
@@ -142,6 +156,27 @@ function validateIncomingAttachment(file) {
 
     if (!isAcceptedByMime && !isAcceptedByExtension) {
         return 'Use a common proof file such as image, PDF, DOC, DOCX, TXT, ZIP, or RAR.';
+    }
+
+    return '';
+}
+
+function validateIncomingItemImage(file) {
+    if (!file) {
+        return 'Please choose an image first.';
+    }
+
+    if (file.size > MAX_ITEM_IMAGE_SIZE_BYTES) {
+        return 'Image must be 5 MB or smaller.';
+    }
+
+    const extension = getFileExtension(file.originalname);
+    const mimeType = String(file.mimetype || '').toLowerCase();
+    const isAcceptedByMime = mimeType.startsWith('image/');
+    const isAcceptedByExtension = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
+
+    if (!isAcceptedByMime && !isAcceptedByExtension) {
+        return 'Please select a valid image file.';
     }
 
     return '';
@@ -246,6 +281,16 @@ function formatAttachmentPayload(file, filePath) {
     };
 }
 
+function extractItemImageOwnerFromPath(filePath) {
+    const parts = normalizeAttachmentPath(filePath).split('/');
+
+    if (parts.length < 3 || parts[0] !== ITEM_IMAGE_PATH_PREFIX) {
+        return '';
+    }
+
+    return sanitizePathSegment(parts[1]);
+}
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 
@@ -256,7 +301,100 @@ app.get('/api/health', (_request, response) => {
     });
 });
 
-app.post('/api/chat-attachments/upload', authenticateRequest, upload.single('file'), async (request, response) => {
+app.post('/api/item-images/upload', authenticateRequest, itemImageUpload.single('file'), async (request, response) => {
+    try {
+        await assertServerConfigured();
+
+        const validationError = validateIncomingItemImage(request.file);
+        if (validationError) {
+            response.status(400).json({ error: validationError });
+            return;
+        }
+
+        const userId = getAuthenticatedUserId(request);
+
+        if (!userId) {
+            response.status(401).json({ error: 'Could not resolve your account.' });
+            return;
+        }
+
+        const uploadPath = `${ITEM_IMAGE_PATH_PREFIX}/${userId}/${Date.now()}-${sanitizeFileName(request.file.originalname || 'item-image')}`;
+        const contentType = resolveAttachmentContentType(request.file);
+
+        const { error: uploadError } = await supabase.storage
+            .from(SUPABASE_ITEM_BUCKET)
+            .upload(uploadPath, request.file.buffer, {
+                contentType: contentType || undefined,
+                upsert: false,
+                cacheControl: '3600'
+            });
+
+        if (uploadError) {
+            console.error('Supabase item image upload failed:', uploadError);
+            response.status(500).json({ error: 'Could not upload the item image.' });
+            return;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+            .from(SUPABASE_ITEM_BUCKET)
+            .getPublicUrl(uploadPath);
+
+        if (!publicUrlData?.publicUrl) {
+            await supabase.storage.from(SUPABASE_ITEM_BUCKET).remove([uploadPath]);
+            response.status(500).json({ error: 'Could not resolve the uploaded image URL.' });
+            return;
+        }
+
+        response.json({
+            imageUrl: publicUrlData.publicUrl,
+            path: uploadPath,
+            provider: 'supabase'
+        });
+    } catch (error) {
+        console.error('Item image upload failed:', error);
+        response.status(error.status || 500).json({
+            error: error.message || 'Could not upload the item image.'
+        });
+    }
+});
+
+app.post('/api/item-images/delete', authenticateRequest, async (request, response) => {
+    try {
+        await assertServerConfigured();
+
+        const filePath = normalizeAttachmentPath(request.body?.path);
+
+        if (!filePath) {
+            response.status(400).json({ error: 'Missing item image path.' });
+            return;
+        }
+
+        const userId = getAuthenticatedUserId(request);
+        const pathOwner = extractItemImageOwnerFromPath(filePath);
+
+        if (!userId || !pathOwner || pathOwner !== userId) {
+            response.status(403).json({ error: 'You do not have access to this item image.' });
+            return;
+        }
+
+        const { error } = await supabase.storage.from(SUPABASE_ITEM_BUCKET).remove([filePath]);
+
+        if (error) {
+            console.error('Item image cleanup failed:', error);
+            response.status(500).json({ error: 'Could not delete the uploaded item image.' });
+            return;
+        }
+
+        response.json({ ok: true });
+    } catch (error) {
+        console.error('Item image deletion failed:', error);
+        response.status(error.status || 500).json({
+            error: error.message || 'Could not delete the uploaded item image.'
+        });
+    }
+});
+
+app.post('/api/chat-attachments/upload', authenticateRequest, attachmentUpload.single('file'), async (request, response) => {
     try {
         await assertServerConfigured();
 
@@ -411,7 +549,10 @@ app.use(express.static(ROOT_DIR, {
 
 app.use((error, _request, response, _next) => {
     if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-        response.status(400).json({ error: 'File must be 10 MB or smaller.' });
+        const message = _request.path === '/api/item-images/upload'
+            ? 'Image must be 5 MB or smaller.'
+            : 'File must be 10 MB or smaller.';
+        response.status(400).json({ error: message });
         return;
     }
 
