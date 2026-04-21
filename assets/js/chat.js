@@ -663,6 +663,7 @@ if (!roleScope) {
             elements.chatEyebrow.textContent = 'Secure Handover Chat';
             elements.chatTitle.textContent = 'Secure Handover Chat';
             elements.chatSubInfo.textContent = 'Select a conversation to continue.';
+            elements.chatStatusBadge.hidden = false;
             elements.chatStatusBadge.textContent = 'Idle';
             elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--idle';
             elements.chatItemPreview.innerHTML = '';
@@ -683,24 +684,27 @@ if (!roleScope) {
 
         if (state.currentChatDoc.status === 'closed') {
             elements.chatSubInfo.textContent = 'Ownership has been verified and the handover is complete.';
-            elements.chatStatusBadge.textContent = 'Closed';
-            elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--closed';
         } else if (isStaffScope) {
             if (state.currentChatReadOnly) {
-                elements.chatSubInfo.textContent = 'This chat is already assigned to another staff member.';
-                elements.chatStatusBadge.textContent = 'Assigned';
-                elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--readonly';
+                elements.chatSubInfo.textContent = '';
             } else {
-                elements.chatSubInfo.textContent = 'Review proof, verify ownership, and coordinate the handover here.';
-                elements.chatStatusBadge.textContent = 'Active';
-                elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--active';
+                elements.chatSubInfo.textContent = '';
             }
         } else {
             elements.chatSubInfo.textContent = state.currentChatDoc.staffId
                 ? 'Connected to staff. Send proof or ask for updates here.'
                 : 'Waiting for staff to join. You can send proof documents now.';
+            elements.chatStatusBadge.hidden = false;
             elements.chatStatusBadge.textContent = state.currentChatDoc.staffId ? 'Active' : 'Waiting';
             elements.chatStatusBadge.className = `chat-status-badge ${state.currentChatDoc.staffId ? 'chat-status-badge--active' : 'chat-status-badge--waiting'}`;
+        }
+
+        if (isStaffScope) {
+            elements.chatStatusBadge.hidden = true;
+        } else if (state.currentChatDoc.status === 'closed') {
+            elements.chatStatusBadge.hidden = false;
+            elements.chatStatusBadge.textContent = 'Closed';
+            elements.chatStatusBadge.className = 'chat-status-badge chat-status-badge--closed';
         }
 
         elements.chatItemPreview.innerHTML = `
@@ -1274,10 +1278,12 @@ if (!roleScope) {
                     <header class="chat-widget__panel-header">
                         <div class="chat-widget__panel-title">
                             <span class="chat-widget__eyebrow" id="chat-widget-eyebrow">Secure Handover Chat</span>
-                            <button type="button" class="chat-widget__thread-toggle" id="chat-widget-thread-toggle">
-                                <i class="fas fa-layer-group" aria-hidden="true"></i>
-                                Chats
-                            </button>
+                            ${isStaffScope ? '' : `
+                                <button type="button" class="chat-widget__thread-toggle" id="chat-widget-thread-toggle">
+                                    <i class="fas fa-layer-group" aria-hidden="true"></i>
+                                    Chats
+                                </button>
+                            `}
                         </div>
                         <div class="chat-widget__panel-actions">
                             <span class="chat-status-badge chat-status-badge--idle" id="chat-widget-status-badge">Idle</span>
@@ -1290,6 +1296,12 @@ if (!roleScope) {
                             <button type="button" class="chat-widget__icon-btn" id="chat-widget-minimize-btn" aria-label="Minimize chat">
                                 <i class="fas fa-minus" aria-hidden="true"></i>
                             </button>
+                            ${isStaffScope ? `
+                                <button type="button" class="chat-widget__thread-toggle chat-widget__thread-toggle--compact" id="chat-widget-thread-toggle">
+                                    <i class="fas fa-layer-group" aria-hidden="true"></i>
+                                    Chats
+                                </button>
+                            ` : ''}
                         </div>
                     </header>
 

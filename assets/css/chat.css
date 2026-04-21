@@ -128,10 +128,10 @@
 
 .chat-widget__eyebrow {
     margin: 0;
-    font-size: 0.72rem;
-    font-weight: 700;
+    font-size: 0.92rem;
+    font-weight: 800;
     letter-spacing: 0.02em;
-    color: #1d4ed8;
+    color: #0f172a;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -156,6 +156,11 @@
     color: #1d4ed8;
     font-size: 0.84rem;
     font-weight: 700;
+}
+
+.chat-widget__thread-toggle--compact {
+    align-self: center;
+    padding: 8px 12px;
 }
 
 .chat-widget__thread-toggle:hover,
@@ -272,7 +277,7 @@
 
 .chat-widget__context-copy h3 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: #0f172a;
     white-space: nowrap;
@@ -282,6 +287,10 @@
 
 .chat-widget__context-copy p {
     margin: 0;
+}
+
+.chat-widget__context-copy p:empty {
+    display: none;
 }
 
 .chat-item-preview {
