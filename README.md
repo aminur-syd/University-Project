@@ -14,6 +14,33 @@ Users can submit reports for both lost and found items. They can browse availabl
 - Start a secure claim and handover process
 - Staff and admin review found-item submissions and verify ownership
 
+## Local Run
+1. Copy `.env.example` to `.env`
+2. Set `SUPABASE_SERVICE_ROLE_KEY` in `.env`
+3. Run `npm install`
+4. Run `npm start`
+5. Open `http://localhost:3000`
+
+If port `3000` is already in use, start the server with another port, for example:
+
+```bash
+PORT=3001 npm start
+```
+
+## Chat Attachments
+Chat attachments now upload through the Node server and are stored in the Supabase `Chat-proofs` bucket.
+
+Required environment variables:
+
+```env
+SUPABASE_URL=https://stogzhtvnvobmhvoqxuy.supabase.co
+SUPABASE_BUCKET=Chat-proofs
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+FIREBASE_PROJECT_ID=lost-and-found-16023
+```
+
+The `SUPABASE_SERVICE_ROLE_KEY` must stay on the server only.
+
 ## Credits / Team Members
 - [Susmita Dhar Priya](https://github.com/Priya-Dhar10)
 

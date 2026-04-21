@@ -1,4 +1,4 @@
-import { auth, db, storage } from './firebase-config.js';
+import { auth, db } from './firebase-config.js';
 import { writeAuditLog } from './audit-log.js';
 import {
     addDoc,
@@ -14,17 +14,12 @@ import {
     where
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import {
-    deleteObject,
-    getDownloadURL,
-    ref as storageRef,
-    uploadBytes
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const pathName = window.location.pathname;
 const searchParams = new URLSearchParams(window.location.search);
 const roleScope = pathName.includes('/staff/') ? 'staff' : pathName.includes('/user/') ? 'user' : null;
 const dashboardPath = roleScope ? `/${roleScope}/dashboard` : null;
+const CHAT_ATTACHMENT_API_BASE = '/api/chat-attachments';
 
 if (dashboardPath && /\/(?:user|staff)\/chat(?:\.html)?$/.test(pathName)) {
     window.location.replace(`${dashboardPath}${window.location.search}${window.location.hash}`);
@@ -70,8 +65,10 @@ if (!roleScope) {
 
     const elements = {};
     const claimedChatIds = new Set();
+    const attachmentUrlCache = new Map();
     const imageUrlCache = new Map();
     let threadRenderToken = 0;
+    let messageRenderToken = 0;
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -211,6 +208,164 @@ if (!roleScope) {
         }
 
         return 'fa-file';
+    }
+
+    function getCachedAttachmentUrl(filePath) {
+        const cachedEntry = attachmentUrlCache.get(filePath);
+
+        if (!cachedEntry) {
+            return '';
+        }
+
+        if (cachedEntry.expiresAt <= Date.now()) {
+            attachmentUrlCache.delete(filePath);
+            return '';
+        }
+
+        return cachedEntry.url;
+    }
+
+    function cacheAttachmentUrl(filePath, url, expiresInSeconds = 3600) {
+        if (!filePath || !url) {
+            return;
+        }
+
+        attachmentUrlCache.set(filePath, {
+            url,
+            expiresAt: Date.now() + Math.max(30, Number(expiresInSeconds || 3600) - 30) * 1000
+        });
+    }
+
+    async function getFirebaseAuthToken() {
+        if (!state.user) {
+            throw new Error('You must be signed in to access chat attachments.');
+        }
+
+        return state.user.getIdToken();
+    }
+
+    async function parseJsonResponse(response) {
+        const responseText = await response.text();
+
+        if (!responseText) {
+            return {};
+        }
+
+        try {
+            return JSON.parse(responseText);
+        } catch (error) {
+            return {
+                error: responseText
+            };
+        }
+    }
+
+    async function uploadChatAttachment({ chatId, messageId, file }) {
+        const authToken = await getFirebaseAuthToken();
+        const formData = new FormData();
+        formData.append('chatId', chatId);
+        formData.append('messageId', messageId);
+        formData.append('file', file);
+
+        const response = await fetch(`${CHAT_ATTACHMENT_API_BASE}/upload`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${authToken}`
+            },
+            body: formData
+        });
+
+        const payload = await parseJsonResponse(response);
+
+        if (!response.ok) {
+            throw new Error(payload?.error || 'Could not upload the attachment.');
+        }
+
+        if (payload?.attachment?.path && payload?.attachment?.url) {
+            cacheAttachmentUrl(payload.attachment.path, payload.attachment.url, payload.expiresIn);
+        }
+
+        if (!payload?.attachment) {
+            return null;
+        }
+
+        const { url: _ephemeralUrl, ...persistedAttachment } = payload.attachment;
+        return persistedAttachment;
+    }
+
+    async function signChatAttachmentPaths(paths) {
+        const authToken = await getFirebaseAuthToken();
+        const response = await fetch(`${CHAT_ATTACHMENT_API_BASE}/sign`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ paths })
+        });
+
+        const payload = await parseJsonResponse(response);
+
+        if (!response.ok) {
+            throw new Error(payload?.error || 'Could not access one or more chat attachments.');
+        }
+
+        return payload;
+    }
+
+    async function deleteChatAttachment(filePath) {
+        if (!filePath) {
+            return;
+        }
+
+        const authToken = await getFirebaseAuthToken();
+        const response = await fetch(`${CHAT_ATTACHMENT_API_BASE}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ path: filePath })
+        });
+
+        const payload = await parseJsonResponse(response);
+
+        if (!response.ok) {
+            throw new Error(payload?.error || 'Could not delete the uploaded attachment.');
+        }
+    }
+
+    async function resolveAttachmentUrls(messages) {
+        const pathsNeedingSignedUrls = [...new Set(
+            messages
+                .map((message) => message?.attachment)
+                .filter((attachment) => attachment?.path && !attachment?.url && !getCachedAttachmentUrl(attachment.path))
+                .map((attachment) => attachment.path)
+        )];
+
+        if (pathsNeedingSignedUrls.length) {
+            const signedPayload = await signChatAttachmentPaths(pathsNeedingSignedUrls);
+
+            Object.entries(signedPayload?.urls || {}).forEach(([filePath, signedUrl]) => {
+                cacheAttachmentUrl(filePath, signedUrl, signedPayload?.expiresIn);
+            });
+        }
+
+        return messages.map((message) => {
+            if (!message?.attachment) {
+                return message;
+            }
+
+            const resolvedUrl = message.attachment.url || getCachedAttachmentUrl(message.attachment.path) || '';
+
+            return {
+                ...message,
+                attachment: {
+                    ...message.attachment,
+                    url: resolvedUrl
+                }
+            };
+        });
     }
 
     function getThreadLabel(chat) {
@@ -552,7 +707,19 @@ if (!roleScope) {
 
     function buildAttachmentMarkup(attachment) {
         if (!attachment?.url) {
-            return '';
+            if (!attachment?.name) {
+                return '';
+            }
+
+            return `
+                <div class="chat-attachment chat-attachment--file" role="note">
+                    <i class="fas ${getAttachmentIconClass(attachment)} chat-attachment__icon" aria-hidden="true"></i>
+                    <span class="chat-attachment__copy">
+                        <strong>${escapeHtml(attachment.name || 'Attachment')}</strong>
+                        <span>Attachment is temporarily unavailable.</span>
+                    </span>
+                </div>
+            `;
         }
 
         const kind = getAttachmentKind(attachment);
@@ -578,10 +745,12 @@ if (!roleScope) {
         `;
     }
 
-    function renderMessages(snapshot) {
+    async function renderMessages(snapshot) {
         if (!elements.messages) {
             return;
         }
+
+        const renderToken = ++messageRenderToken;
 
         if (snapshot.empty) {
             const emptyMessage = state.currentChatDoc?.status === 'closed'
@@ -593,11 +762,24 @@ if (!roleScope) {
             return;
         }
 
+        let messages = snapshot.docs.map((messageDoc) => ({
+            id: messageDoc.id,
+            ...messageDoc.data()
+        }));
+
+        try {
+            messages = await resolveAttachmentUrls(messages);
+        } catch (error) {
+            console.error('Could not resolve private attachment URLs:', error);
+        }
+
+        if (renderToken !== messageRenderToken) {
+            return;
+        }
+
         elements.messages.innerHTML = '';
 
-        snapshot.forEach((messageDoc) => {
-            const message = messageDoc.data();
-
+        messages.forEach((message) => {
             if (message.senderId === 'system') {
                 const systemMessage = document.createElement('div');
                 systemMessage.className = 'sys-message';
@@ -736,7 +918,13 @@ if (!roleScope) {
         state.messagesUnsubscribe = onSnapshot(
             query(collection(db, 'chats', chatId, 'messages'), orderBy('createdAt', 'asc')),
             (snapshot) => {
-                renderMessages(snapshot);
+                renderMessages(snapshot).catch((error) => {
+                    console.error('Error rendering chat messages:', error);
+                    if (elements.messages) {
+                        elements.messages.innerHTML = '<div class="sys-message">Could not load the chat history.</div>';
+                    }
+                    setFeedback('Could not load the chat history.', 'error');
+                });
             },
             (error) => {
                 console.error('Error loading chat messages:', error);
@@ -862,30 +1050,18 @@ if (!roleScope) {
         setFeedback(file ? 'Uploading proof document...' : 'Sending message...', 'info');
 
         const messageRef = doc(collection(db, 'chats', state.currentChatId, 'messages'));
-        let uploadedFileRef = null;
+        let uploadedAttachmentPath = '';
 
         try {
             let attachment = null;
 
             if (file) {
-                const resolvedContentType = resolveAttachmentContentType(file);
-                const uploadPath = `chat-attachments/${state.currentChatId}/${messageRef.id}/${sanitizeFileName(file.name)}`;
-                uploadedFileRef = storageRef(storage, uploadPath);
-                await uploadBytes(
-                    uploadedFileRef,
-                    file,
-                    resolvedContentType ? { contentType: resolvedContentType } : undefined
-                );
-                const downloadUrl = await getDownloadURL(uploadedFileRef);
-
-                attachment = {
-                    name: file.name,
-                    url: downloadUrl,
-                    path: uploadPath,
-                    contentType: resolvedContentType || '',
-                    size: file.size,
-                    kind: getAttachmentKind(file)
-                };
+                attachment = await uploadChatAttachment({
+                    chatId: state.currentChatId,
+                    messageId: messageRef.id,
+                    file
+                });
+                uploadedAttachmentPath = attachment?.path || '';
             }
 
             const payload = {
@@ -912,9 +1088,9 @@ if (!roleScope) {
         } catch (error) {
             console.error('Error sending chat message:', error);
 
-            if (uploadedFileRef) {
+            if (uploadedAttachmentPath) {
                 try {
-                    await deleteObject(uploadedFileRef);
+                    await deleteChatAttachment(uploadedAttachmentPath);
                 } catch (cleanupError) {
                     console.error('Failed to remove orphaned chat attachment:', cleanupError);
                 }

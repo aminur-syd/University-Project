@@ -1,0 +1,19 @@
+{
+  "name": "university-lost-and-found-system",
+  "private": true,
+  "version": "1.0.0",
+  "description": "University Lost & Found System demo server",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.104.0",
+    "dotenv": "16.6.1",
+    "express": "4.22.1",
+    "jose": "4.15.9",
+    "multer": "1.4.5-lts.2"
+  }
+}
