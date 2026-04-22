@@ -16,8 +16,11 @@ const SUPABASE_SIGNED_URL_TTL_SECONDS = Math.max(
     Math.min(24 * 60 * 60, Number(process.env.SUPABASE_SIGNED_URL_TTL_SECONDS || 3600))
 );
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'lost-and-found-16023';
+const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY || 'AIzaSyDWt4CTYOxfgx3K72c4pfeFm7q6rzLC1Zg';
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_ITEM_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const DEFAULT_PUBLIC_ITEM_LIMIT = 50;
+const MAX_PUBLIC_ITEM_LIMIT = 100;
 const GOOGLE_SECURETOKEN_JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 const ITEM_IMAGE_PATH_PREFIX = 'item-images';
 
@@ -226,6 +229,245 @@ async function assertServerConfigured() {
     }
 }
 
+function parsePositiveInt(value, fallback, maxValue) {
+    const parsedValue = Number.parseInt(String(value || ''), 10);
+
+    if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+        return fallback;
+    }
+
+    return Math.min(parsedValue, maxValue);
+}
+
+function getEffectivePublicItemQueryLimit(limit, category, search) {
+    if ((category && category !== 'all') || search) {
+        return MAX_PUBLIC_ITEM_LIMIT;
+    }
+
+    return limit;
+}
+
+function getFirestoreValueData(value) {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    if ('stringValue' in value) return value.stringValue;
+    if ('integerValue' in value) return Number.parseInt(value.integerValue, 10);
+    if ('doubleValue' in value) return Number(value.doubleValue);
+    if ('booleanValue' in value) return Boolean(value.booleanValue);
+    if ('timestampValue' in value) return value.timestampValue;
+    if ('nullValue' in value) return null;
+
+    if ('mapValue' in value) {
+        const fields = value.mapValue?.fields || {};
+        return Object.fromEntries(
+            Object.entries(fields).map(([fieldName, fieldValue]) => [fieldName, getFirestoreValueData(fieldValue)])
+        );
+    }
+
+    if ('arrayValue' in value) {
+        const values = value.arrayValue?.values || [];
+        return values.map(getFirestoreValueData);
+    }
+
+    return null;
+}
+
+function decodeFirestoreDocument(document) {
+    const fieldEntries = Object.entries(document?.fields || {});
+    const decodedFields = Object.fromEntries(
+        fieldEntries.map(([fieldName, fieldValue]) => [fieldName, getFirestoreValueData(fieldValue)])
+    );
+
+    return {
+        id: String(document?.name || '').split('/').pop() || '',
+        ...decodedFields
+    };
+}
+
+function getPublicItemCreatedAtMillis(item) {
+    if (!item?.createdAt) {
+        return null;
+    }
+
+    const parsedTime = Date.parse(String(item.createdAt));
+    return Number.isNaN(parsedTime) ? null : parsedTime;
+}
+
+function sortPublicItemsByCreatedAtDesc(leftItem, rightItem) {
+    const leftMillis = getPublicItemCreatedAtMillis(leftItem);
+    const rightMillis = getPublicItemCreatedAtMillis(rightItem);
+
+    if (leftMillis === null && rightMillis === null) {
+        return String(rightItem?.id || '').localeCompare(String(leftItem?.id || ''));
+    }
+
+    if (leftMillis === null) {
+        return 1;
+    }
+
+    if (rightMillis === null) {
+        return -1;
+    }
+
+    if (leftMillis === rightMillis) {
+        return String(rightItem?.id || '').localeCompare(String(leftItem?.id || ''));
+    }
+
+    return rightMillis - leftMillis;
+}
+
+function buildPublicItemsStructuredQuery(type, itemLimit) {
+    const filters = [
+        {
+            fieldFilter: {
+                field: {
+                    fieldPath: 'status'
+                },
+                op: 'EQUAL',
+                value: {
+                    stringValue: 'active'
+                }
+            }
+        },
+        {
+            fieldFilter: {
+                field: {
+                    fieldPath: 'reviewStatus'
+                },
+                op: 'EQUAL',
+                value: {
+                    stringValue: 'approved'
+                }
+            }
+        }
+    ];
+
+    if (type === 'lost' || type === 'found') {
+        filters.unshift({
+            fieldFilter: {
+                field: {
+                    fieldPath: 'type'
+                },
+                op: 'EQUAL',
+                value: {
+                    stringValue: type
+                }
+            }
+        });
+    }
+
+    return {
+        from: [
+            {
+                collectionId: 'items'
+            }
+        ],
+        where: {
+            compositeFilter: {
+                op: 'AND',
+                filters
+            }
+        },
+        orderBy: [
+            {
+                field: {
+                    fieldPath: 'createdAt'
+                },
+                direction: 'DESCENDING'
+            },
+            {
+                field: {
+                    fieldPath: '__name__'
+                },
+                direction: 'DESCENDING'
+            }
+        ],
+        limit: itemLimit
+    };
+}
+
+async function runFirestorePublicItemsQuery(type, itemLimit) {
+    if (!FIREBASE_WEB_API_KEY) {
+        throw new Error('FIREBASE_WEB_API_KEY is not configured on the server.');
+    }
+
+    const firestoreResponse = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(FIREBASE_PROJECT_ID)}/databases/(default)/documents:runQuery?key=${encodeURIComponent(FIREBASE_WEB_API_KEY)}`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                structuredQuery: buildPublicItemsStructuredQuery(type, itemLimit)
+            })
+        }
+    );
+
+    const responseText = await firestoreResponse.text();
+
+    if (!firestoreResponse.ok) {
+        throw new Error(`Firestore public items query failed: ${responseText}`);
+    }
+
+    let queryRows = [];
+
+    try {
+        queryRows = JSON.parse(responseText);
+    } catch (error) {
+        throw new Error(`Could not parse Firestore public items response: ${responseText}`);
+    }
+
+    return queryRows
+        .map((row) => row?.document ? decodeFirestoreDocument(row.document) : null)
+        .filter(Boolean);
+}
+
+function filterPublicItems(items, { category, search }) {
+    let filteredItems = [...items];
+
+    if (category && category !== 'all') {
+        filteredItems = filteredItems.filter((item) => item.category === category);
+    }
+
+    if (search) {
+        const normalizedSearch = search.toLowerCase();
+        filteredItems = filteredItems.filter((item) => {
+            const searchableFields = [
+                item.title,
+                item.description,
+                item.location
+            ];
+
+            return searchableFields.some((value) => String(value || '').toLowerCase().includes(normalizedSearch));
+        });
+    }
+
+    return filteredItems;
+}
+
+async function getPublicItems({ type, limit, category, search }) {
+    const queryLimit = getEffectivePublicItemQueryLimit(limit, category, search);
+    let items = [];
+
+    if (type === 'all') {
+        const [lostItems, foundItems] = await Promise.all([
+            runFirestorePublicItemsQuery('lost', queryLimit),
+            runFirestorePublicItemsQuery('found', queryLimit)
+        ]);
+
+        items = [...lostItems, ...foundItems];
+    } else {
+        items = await runFirestorePublicItemsQuery(type, queryLimit);
+    }
+
+    return filterPublicItems(items, { category, search })
+        .sort(sortPublicItemsByCreatedAtDesc)
+        .slice(0, limit);
+}
+
 async function assertChatAccess(idToken, chatId) {
     const sanitizedChatId = sanitizePathSegment(chatId);
 
@@ -299,6 +541,32 @@ app.get('/api/health', (_request, response) => {
         ok: true,
         supabaseConfigured: Boolean(supabase)
     });
+});
+
+app.get('/api/items', async (request, response) => {
+    const requestedType = String(request.query.type || 'all').toLowerCase();
+    const type = ['all', 'lost', 'found'].includes(requestedType) ? requestedType : 'all';
+    const limit = parsePositiveInt(request.query.limit, DEFAULT_PUBLIC_ITEM_LIMIT, MAX_PUBLIC_ITEM_LIMIT);
+    const category = String(request.query.category || 'all').trim() || 'all';
+    const search = String(request.query.search || '').trim();
+
+    try {
+        const items = await getPublicItems({
+            type,
+            limit,
+            category,
+            search
+        });
+
+        response.json({
+            items
+        });
+    } catch (error) {
+        console.error('Public items fetch failed:', error);
+        response.status(500).json({
+            error: 'Could not load items.'
+        });
+    }
 });
 
 app.post('/api/item-images/upload', authenticateRequest, itemImageUpload.single('file'), async (request, response) => {

@@ -37,6 +37,7 @@ const FALLBACK_DETAIL_IMAGE = 'https://via.placeholder.com/600x400?text=No+Image
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const FIREBASE_OPERATION_TIMEOUT_MS = 15000;
 const ITEM_IMAGE_API_BASE = '/api/item-images';
+const ITEMS_API_BASE = '/api/items';
 
 let createPostCurrentUser = auth.currentUser;
 let hasCreatePostAuthResolved = !createPostForm;
@@ -267,6 +268,37 @@ async function parseJsonResponse(response) {
             error: responseText
         };
     }
+}
+
+async function fetchPublicItems({ type = 'all', limit = 50, category = 'all', search = '' } = {}) {
+    const requestUrl = new URL(ITEMS_API_BASE, window.location.origin);
+
+    requestUrl.searchParams.set('type', type);
+    requestUrl.searchParams.set('limit', String(limit));
+
+    if (category && category !== 'all') {
+        requestUrl.searchParams.set('category', category);
+    }
+
+    if (search) {
+        requestUrl.searchParams.set('search', search);
+    }
+
+    const response = await fetch(requestUrl.toString(), {
+        headers: {
+            Accept: 'application/json'
+        }
+    });
+    const payload = await parseJsonResponse(response);
+
+    if (!response.ok) {
+        throw createFirebaseError(
+            'items/load-failed',
+            payload?.error || 'Could not load items.'
+        );
+    }
+
+    return Array.isArray(payload?.items) ? payload.items : [];
 }
 
 async function getCreatePostAuthToken(user) {
@@ -1003,48 +1035,33 @@ if (createPostForm) {
 const statsSection = document.querySelector('.stats-section');
 
 if (latestLostGrid || latestFoundGrid || itemsGrid || statsSection) {
-    const fetchApprovedActiveItemsByType = async (type, itemLimit = 50) => {
-        const itemsQuery = query(
-            collection(db, 'items'),
-            where('type', '==', type),
-            where('status', '==', 'active'),
-            where('reviewStatus', '==', 'approved'),
-            orderBy('createdAt', 'desc'),
-            limit(itemLimit)
-        );
+    const renderPlainItems = async (items, container) => {
+        const mockDocSnaps = items.map((item) => ({
+            id: item.id,
+            data: () => item
+        }));
 
-        const querySnapshot = await getDocs(itemsQuery);
-        return querySnapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        await renderItems(mockDocSnaps, container);
     };
 
     const fetchHomePageItems = async () => {
         try {
             if (latestLostGrid) {
                 renderLoadingState(latestLostGrid, 'Loading recently lost items...');
-                const lostQuery = query(
-                    collection(db, 'items'),
-                    where('type', '==', 'lost'),
-                    where('status', '==', 'active'),
-                    where('reviewStatus', '==', 'approved'),
-                    orderBy('createdAt', 'desc'),
-                    limit(4)
-                );
-                const lostSnapshot = await getDocs(lostQuery);
-                await renderItems(lostSnapshot.docs, latestLostGrid);
+                const lostItems = await fetchPublicItems({
+                    type: 'lost',
+                    limit: 4
+                });
+                await renderPlainItems(lostItems, latestLostGrid);
             }
 
             if (latestFoundGrid) {
                 renderLoadingState(latestFoundGrid, 'Loading approved found items...');
-                const foundQuery = query(
-                    collection(db, 'items'),
-                    where('type', '==', 'found'),
-                    where('status', '==', 'active'),
-                    where('reviewStatus', '==', 'approved'),
-                    orderBy('createdAt', 'desc'),
-                    limit(4)
-                );
-                const foundSnapshot = await getDocs(foundQuery);
-                await renderItems(foundSnapshot.docs, latestFoundGrid);
+                const foundItems = await fetchPublicItems({
+                    type: 'found',
+                    limit: 4
+                });
+                await renderPlainItems(foundItems, latestFoundGrid);
             }
         } catch (error) {
             console.error('Error fetching homepage items:', error);
@@ -1076,39 +1093,13 @@ if (latestLostGrid || latestFoundGrid || itemsGrid || statsSection) {
             if (categorySelect) categorySelect.value = categoryFilter;
             if (searchInput) searchInput.value = searchFilter;
 
-            let items = [];
-
-            if (typeFilter === 'all') {
-                const [lostItems, foundItems] = await Promise.all([
-                    fetchApprovedActiveItemsByType('lost'),
-                    fetchApprovedActiveItemsByType('found')
-                ]);
-
-                items = [...lostItems, ...foundItems]
-                    .sort(sortItemsByCreatedAtDesc)
-                    .slice(0, 50);
-            } else {
-                items = await fetchApprovedActiveItemsByType(typeFilter);
-            }
-
-            if (categoryFilter !== 'all') {
-                items = items.filter((item) => item.category === categoryFilter);
-            }
-
-            if (searchFilter) {
-                const lowerSearch = searchFilter.toLowerCase();
-                items = items.filter((item) =>
-                    (item.title || '').toLowerCase().includes(lowerSearch) ||
-                    (item.description || '').toLowerCase().includes(lowerSearch) ||
-                    (item.location || '').toLowerCase().includes(lowerSearch)
-                );
-            }
-
-            const mockDocSnaps = items.map((item) => ({
-                id: item.id,
-                data: () => item
-            }));
-            await renderItems(mockDocSnaps, itemsGrid);
+            const items = await fetchPublicItems({
+                type: typeFilter,
+                limit: 50,
+                category: categoryFilter,
+                search: searchFilter
+            });
+            await renderPlainItems(items, itemsGrid);
         } catch (error) {
             console.error('Error fetching browse items:', error);
             itemsGrid.innerHTML = '<p>Error loading items.</p>';
