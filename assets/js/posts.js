@@ -100,6 +100,47 @@ function renderLoadingState(container, message) {
     container.innerHTML = `<div class="loading-spinner item-grid-status">${message}</div>`;
 }
 
+function getCreatedAtMillis(timestamp) {
+    if (!timestamp) {
+        return null;
+    }
+
+    if (typeof timestamp.toMillis === 'function') {
+        return timestamp.toMillis();
+    }
+
+    if (typeof timestamp.seconds === 'number') {
+        const nanoseconds = typeof timestamp.nanoseconds === 'number' ? timestamp.nanoseconds : 0;
+        return (timestamp.seconds * 1000) + Math.floor(nanoseconds / 1_000_000);
+    }
+
+    if (timestamp instanceof Date) {
+        return timestamp.getTime();
+    }
+
+    const parsedTimestamp = Date.parse(timestamp);
+    return Number.isNaN(parsedTimestamp) ? null : parsedTimestamp;
+}
+
+function sortItemsByCreatedAtDesc(leftItem, rightItem) {
+    const leftMillis = getCreatedAtMillis(leftItem?.createdAt);
+    const rightMillis = getCreatedAtMillis(rightItem?.createdAt);
+
+    if (leftMillis === null && rightMillis === null) {
+        return 0;
+    }
+
+    if (leftMillis === null) {
+        return 1;
+    }
+
+    if (rightMillis === null) {
+        return -1;
+    }
+
+    return rightMillis - leftMillis;
+}
+
 function getReviewStatusClass(status) {
     if (status === 'approved') return 'status-label status-label--approved';
     if (status === 'rejected') return 'status-label status-label--rejected';
@@ -962,6 +1003,20 @@ if (createPostForm) {
 const statsSection = document.querySelector('.stats-section');
 
 if (latestLostGrid || latestFoundGrid || itemsGrid || statsSection) {
+    const fetchApprovedActiveItemsByType = async (type, itemLimit = 50) => {
+        const itemsQuery = query(
+            collection(db, 'items'),
+            where('type', '==', type),
+            where('status', '==', 'active'),
+            where('reviewStatus', '==', 'approved'),
+            orderBy('createdAt', 'desc'),
+            limit(itemLimit)
+        );
+
+        const querySnapshot = await getDocs(itemsQuery);
+        return querySnapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    };
+
     const fetchHomePageItems = async () => {
         try {
             if (latestLostGrid) {
@@ -1010,7 +1065,10 @@ if (latestLostGrid || latestFoundGrid || itemsGrid || statsSection) {
         renderLoadingState(itemsGrid, 'Loading items...');
 
         try {
-            const typeFilter = urlParams.get('type') || 'all';
+            const requestedType = urlParams.get('type');
+            const typeFilter = requestedType === 'lost' || requestedType === 'found'
+                ? requestedType
+                : 'all';
             const categoryFilter = urlParams.get('category') || 'all';
             const searchFilter = urlParams.get('search') || '';
 
@@ -1018,19 +1076,19 @@ if (latestLostGrid || latestFoundGrid || itemsGrid || statsSection) {
             if (categorySelect) categorySelect.value = categoryFilter;
             if (searchInput) searchInput.value = searchFilter;
 
-            const itemsQuery = query(
-                collection(db, 'items'),
-                where('status', '==', 'active'),
-                where('reviewStatus', '==', 'approved'),
-                orderBy('createdAt', 'desc'),
-                limit(50)
-            );
+            let items = [];
 
-            const querySnapshot = await getDocs(itemsQuery);
-            let items = querySnapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+            if (typeFilter === 'all') {
+                const [lostItems, foundItems] = await Promise.all([
+                    fetchApprovedActiveItemsByType('lost'),
+                    fetchApprovedActiveItemsByType('found')
+                ]);
 
-            if (typeFilter !== 'all') {
-                items = items.filter((item) => item.type === typeFilter);
+                items = [...lostItems, ...foundItems]
+                    .sort(sortItemsByCreatedAtDesc)
+                    .slice(0, 50);
+            } else {
+                items = await fetchApprovedActiveItemsByType(typeFilter);
             }
 
             if (categoryFilter !== 'all') {
