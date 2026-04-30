@@ -26,14 +26,6 @@
     font-size: 0.9rem;
 }
 
-.auth-divider {
-    text-align: center;
-    margin: 20px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
 .auth-link-row {
     text-align: right;
     margin-bottom: 15px;
@@ -46,6 +38,40 @@
 
 .auth-link-inline {
     color: var(--primary-color);
+}
+
+.turnstile-gate {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin: 0 0 1rem;
+    padding: 0.9rem;
+}
+
+.turnstile-gate__label {
+    color: #111827;
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.turnstile-widget {
+    min-height: 65px;
+    width: 100%;
+}
+
+.turnstile-message {
+    color: var(--danger);
+    font-size: 0.82rem;
+    margin-top: 0.45rem;
+}
+
+.turnstile-message.form-message--success {
+    color: var(--success);
+}
+
+.turnstile-message[hidden] {
+    display: none;
 }
 
 .auth-actions {
@@ -61,10 +87,6 @@
 
 .auth-form-row .form-group {
     flex: 1;
-}
-
-.auth-alt-section {
-    margin-top: 20px;
 }
 
 .auth-success {

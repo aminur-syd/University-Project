@@ -17,11 +17,14 @@ const SUPABASE_SIGNED_URL_TTL_SECONDS = Math.max(
 );
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'lost-and-found-16023';
 const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY || 'AIzaSyDWt4CTYOxfgx3K72c4pfeFm7q6rzLC1Zg';
+const CLOUDFLARE_TURNSTILE_SITE_KEY = process.env.CLOUDFLARE_TURNSTILE_SITE_KEY || '';
+const CLOUDFLARE_TURNSTILE_SECRET_KEY = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || '';
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_ITEM_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_PUBLIC_ITEM_LIMIT = 50;
 const MAX_PUBLIC_ITEM_LIMIT = 100;
 const GOOGLE_SECURETOKEN_JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+const CLOUDFLARE_TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const ITEM_IMAGE_PATH_PREFIX = 'item-images';
 
 const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
@@ -221,6 +224,57 @@ async function authenticateRequest(request, response, next) {
         console.error('Firebase token verification failed:', error);
         response.status(401).json({ error: 'Invalid Firebase auth token.' });
     }
+}
+
+function getClientIp(request) {
+    const cfConnectingIp = String(request.headers['cf-connecting-ip'] || '').trim();
+    if (cfConnectingIp) {
+        return cfConnectingIp;
+    }
+
+    const forwardedFor = String(request.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    return forwardedFor || request.socket?.remoteAddress || '';
+}
+
+async function verifyTurnstileToken(token, remoteIp) {
+    if (!CLOUDFLARE_TURNSTILE_SECRET_KEY) {
+        const configError = new Error('Human verification is not configured.');
+        configError.status = 503;
+        throw configError;
+    }
+
+    const formData = new URLSearchParams({
+        secret: CLOUDFLARE_TURNSTILE_SECRET_KEY,
+        response: token
+    });
+
+    if (remoteIp) {
+        formData.set('remoteip', remoteIp);
+    }
+
+    const turnstileResponse = await fetch(CLOUDFLARE_TURNSTILE_VERIFY_URL, {
+        method: 'POST',
+        body: formData
+    });
+
+    let payload = null;
+
+    try {
+        payload = await turnstileResponse.json();
+    } catch (error) {
+        const parseError = new Error('Could not parse human verification response.');
+        parseError.status = 502;
+        throw parseError;
+    }
+
+    if (!turnstileResponse.ok) {
+        const upstreamError = new Error('Could not validate human verification.');
+        upstreamError.status = 502;
+        upstreamError.details = payload;
+        throw upstreamError;
+    }
+
+    return payload;
 }
 
 async function assertServerConfigured() {
@@ -541,6 +595,54 @@ app.get('/api/health', (_request, response) => {
         ok: true,
         supabaseConfigured: Boolean(supabase)
     });
+});
+
+app.get('/api/turnstile/config', (_request, response) => {
+    const configured = Boolean(CLOUDFLARE_TURNSTILE_SITE_KEY && CLOUDFLARE_TURNSTILE_SECRET_KEY);
+    response.json({
+        siteKey: CLOUDFLARE_TURNSTILE_SITE_KEY,
+        configured,
+        error: configured ? '' : 'Human verification needs Cloudflare Turnstile keys on the server.'
+    });
+});
+
+app.post('/api/turnstile/verify', async (request, response) => {
+    const token = String(request.body?.token || '').trim();
+
+    if (!CLOUDFLARE_TURNSTILE_SITE_KEY || !CLOUDFLARE_TURNSTILE_SECRET_KEY) {
+        response.status(503).json({
+            error: 'Human verification is not configured.'
+        });
+        return;
+    }
+
+    if (!token) {
+        response.status(400).json({
+            error: 'Please verify that you are human.'
+        });
+        return;
+    }
+
+    try {
+        const payload = await verifyTurnstileToken(token, getClientIp(request));
+
+        if (!payload?.success) {
+            console.warn('Cloudflare Turnstile validation failed:', payload?.['error-codes'] || []);
+            response.status(403).json({
+                error: 'Human verification failed. Please try again.'
+            });
+            return;
+        }
+
+        response.json({ ok: true });
+    } catch (error) {
+        console.error('Cloudflare Turnstile validation error:', error.details || error);
+        response.status(error.status || 500).json({
+            error: error.status === 503
+                ? 'Human verification is not configured.'
+                : 'Could not validate human verification. Please try again.'
+        });
+    }
 });
 
 app.get('/api/items', async (request, response) => {

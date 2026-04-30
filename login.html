@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
     <link rel="stylesheet" href="assets/css/style.css?v=20260413-02">
-    <link rel="stylesheet" href="assets/css/auth.css?v=20260404-01">
+    <link rel="stylesheet" href="assets/css/auth.css?v=20260501-03">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -30,7 +30,6 @@
                 <h2>Welcome Back</h2>
                 <p>Login to your account</p>
             </div>
-            <!-- Email Login Section -->
             <div id="email-auth-section">
                 <form id="login-form">
                     <div class="form-group">
@@ -55,11 +54,9 @@
                     <div class="auth-link-row">
                         <a href="#" id="forgot-password-link" class="auth-link">Forgot Password?</a>
                     </div>
-                    <button type="submit" class="btn btn-primary w-full">Login</button>
                 </form>
             </div>
 
-            <!-- Forgot Password Section (Hidden by default) -->
             <div id="forgot-password-section" hidden>
                 <div class="form-group">
                     <label for="reset-email">Enter your email address</label>
@@ -71,35 +68,12 @@
                 <div id="reset-message" class="form-message" hidden></div>
             </div>
 
-            <!-- Phone Login Section (Hidden by default) -->
-            <div id="phone-auth-section" class="auth-alt-section" hidden>
-                <div id="phone-group">
-                    <div class="form-group">
-                        <label for="phone-number">Phone Number</label>
-                        <input type="tel" id="phone-number" class="form-control">
-                    </div>
-                    <div id="recaptcha-container" class="mb-15"></div>
-                    <button id="send-code-btn" class="btn btn-primary w-full">Send Code</button>
-                </div>
-
-                <div id="otp-group" hidden>
-                    <div class="form-group">
-                        <label for="otp-code">Verification Code</label>
-                        <input type="text" id="otp-code" class="form-control">
-                    </div>
-                    <button id="verify-code-btn" class="btn btn-success w-full">Verify Code</button>
-                </div>
+            <div class="turnstile-gate" id="turnstile-gate">
+                <div class="turnstile-gate__label">Let us know you are human</div>
+                <div class="turnstile-widget" id="turnstile-widget"></div>
+                <div class="turnstile-message" id="turnstile-message" hidden></div>
             </div>
-
-            <div class="auth-divider">
-                <p>OR</p>
-                <button id="google-btn" class="btn btn-google w-full">
-                    <i class="fab fa-google"></i> Sign in with Google
-                </button>
-                <button id="phone-login-btn" class="btn btn-outline-dark w-full">
-                    <i class="fas fa-phone"></i> Login with Phone
-                </button>
-            </div>
+            <button type="submit" form="login-form" id="email-login-submit" class="btn btn-primary w-full">Login</button>
             <p class="auth-footer">Don't have an account? <a href="/register" class="auth-link-inline">Register here</a></p>
         </div>
     </div>
@@ -147,8 +121,9 @@
         </div>
     </footer>
 
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
     <script type="module" src="assets/js/firebase-config.js?v=20260413-04"></script>
-    <script type="module" src="assets/js/auth.js?v=20260404-01"></script>
+    <script type="module" src="assets/js/auth.js?v=20260501-03"></script>
 </body>
 
 </html>

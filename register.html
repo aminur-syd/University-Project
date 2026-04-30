@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png?v=20260222">
     <meta name="theme-color" content="#0f172a">
     <link rel="stylesheet" href="assets/css/style.css?v=20260413-02">
-    <link rel="stylesheet" href="assets/css/auth.css?v=20260404-01">
+    <link rel="stylesheet" href="assets/css/auth.css?v=20260501-03">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -82,15 +82,14 @@
                         <div class="validation-message" id="zip-error" hidden></div>
                     </div>
                 </div>
+                <div class="turnstile-gate" id="turnstile-gate">
+                    <div class="turnstile-gate__label">Let us know you are human</div>
+                    <div class="turnstile-widget" id="turnstile-widget"></div>
+                    <div class="turnstile-message" id="turnstile-message" hidden></div>
+                </div>
                 <div class="error-message" id="register-error" hidden></div>
                 <button type="submit" class="btn btn-primary w-full">Register</button>
             </form>
-            <div class="auth-divider">
-                <p>OR</p>
-                <button id="google-btn" class="btn btn-google w-full">
-                    <i class="fab fa-google"></i> Sign up with Google
-                </button>
-            </div>
             <div class="auth-footer">
                 <p>Already have an account? <a href="/login" class="auth-link-inline">Login here</a></p>
             </div>
@@ -140,8 +139,9 @@
         </div>
     </footer>
 
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
     <script type="module" src="assets/js/firebase-config.js?v=20260413-04"></script>
-    <script type="module" src="assets/js/auth.js?v=20260404-01"></script>
+    <script type="module" src="assets/js/auth.js?v=20260501-03"></script>
 </body>
 
 </html>

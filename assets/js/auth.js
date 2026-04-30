@@ -5,31 +5,20 @@ import {
     signOut,
     onAuthStateChanged,
     updateProfile,
-    GoogleAuthProvider,
-    signInWithPopup,
-    RecaptchaVerifier,
-    signInWithPhoneNumber,
     sendPasswordResetEmail,
     sendEmailVerification
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     doc,
     setDoc,
-    getDoc,
-    serverTimestamp
+    getDoc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
-const googleBtn = document.getElementById('google-btn');
 const logoutBtn = document.getElementById('logout-btn');
-const phoneLoginBtn = document.getElementById('phone-login-btn');
-const phoneAuthSection = document.getElementById('phone-auth-section');
-const phoneGroup = document.getElementById('phone-group');
+const emailLoginSubmit = document.getElementById('email-login-submit');
 const emailAuthSection = document.getElementById('email-auth-section');
-const sendCodeBtn = document.getElementById('send-code-btn');
-const verifyCodeBtn = document.getElementById('verify-code-btn');
-const recaptchaContainer = document.getElementById('recaptcha-container');
 const forgotPasswordLink = document.getElementById('forgot-password-link');
 const forgotPasswordSection = document.getElementById('forgot-password-section');
 const backToLoginBtn = document.getElementById('back-to-login-btn');
@@ -37,11 +26,21 @@ const resetPasswordBtn = document.getElementById('reset-password-btn');
 const resetMessage = document.getElementById('reset-message');
 const authLinks = document.getElementById('auth-links');
 const userLinks = document.getElementById('user-links');
+const turnstileGate = document.getElementById('turnstile-gate');
+const turnstileWidget = document.getElementById('turnstile-widget');
+const turnstileMessage = document.getElementById('turnstile-message');
+const requiresTurnstile = Boolean(turnstileGate && turnstileWidget && (loginForm || registerForm));
 
 const actionCodeSettings = {
     url: `${window.location.origin}/action`,
     handleCodeInApp: false
 };
+
+const TURNSTILE_CONFIG_ENDPOINT = '/api/turnstile/config';
+const TURNSTILE_VERIFY_ENDPOINT = '/api/turnstile/verify';
+let turnstileWidgetId = null;
+let turnstileToken = '';
+let turnstileReadyPromise = null;
 
 function getDashboardPath(role = 'user') {
     if (role === 'admin') return '/admin/dashboard';
@@ -68,6 +67,186 @@ function setMessage(element, message, type = 'error') {
 
     element.hidden = false;
     element.classList.add(type === 'success' ? 'form-message--success' : 'form-message--error');
+}
+
+function setTurnstileMessage(message, type = 'error') {
+    if (!turnstileMessage) return;
+
+    turnstileMessage.textContent = message;
+    turnstileMessage.classList.remove('form-message--error', 'form-message--success');
+
+    if (!message) {
+        turnstileMessage.hidden = true;
+        return;
+    }
+
+    turnstileMessage.hidden = false;
+    turnstileMessage.classList.add(type === 'success' ? 'form-message--success' : 'form-message--error');
+}
+
+function getAuthMessageElement() {
+    return document.getElementById('login-error') || document.getElementById('register-error');
+}
+
+function waitForTurnstileApi() {
+    return new Promise((resolve, reject) => {
+        if (window.turnstile?.render) {
+            resolve(window.turnstile);
+            return;
+        }
+
+        let attempts = 0;
+        const intervalId = window.setInterval(() => {
+            attempts += 1;
+
+            if (window.turnstile?.render) {
+                window.clearInterval(intervalId);
+                resolve(window.turnstile);
+                return;
+            }
+
+            if (attempts >= 100) {
+                window.clearInterval(intervalId);
+                reject(new Error('Human verification could not be loaded. Please refresh the page.'));
+            }
+        }, 100);
+    });
+}
+
+async function ensureTurnstileReady() {
+    if (!requiresTurnstile) {
+        return;
+    }
+
+    if (turnstileReadyPromise) {
+        return turnstileReadyPromise;
+    }
+
+    turnstileReadyPromise = (async () => {
+        const configResponse = await fetch(TURNSTILE_CONFIG_ENDPOINT, {
+            headers: {
+                Accept: 'application/json'
+            }
+        });
+        const configPayload = await configResponse.json().catch(() => ({}));
+
+        if (!configResponse.ok || !configPayload.siteKey || !configPayload.configured) {
+            throw new Error(configPayload.error || 'Human verification needs Cloudflare Turnstile keys on the server.');
+        }
+
+        const turnstile = await waitForTurnstileApi();
+
+        if (turnstileWidgetId !== null) {
+            return;
+        }
+
+        turnstileWidgetId = turnstile.render(turnstileWidget, {
+            sitekey: configPayload.siteKey,
+            theme: 'light',
+            size: 'flexible',
+            callback(token) {
+                turnstileToken = token;
+                setTurnstileMessage('');
+            },
+            'expired-callback'() {
+                turnstileToken = '';
+                setTurnstileMessage('Human verification expired. Please verify again.');
+            },
+            'error-callback'() {
+                turnstileToken = '';
+                setTurnstileMessage('Human verification failed to load. Please try again.');
+            },
+            'timeout-callback'() {
+                turnstileToken = '';
+                setTurnstileMessage('Human verification timed out. Please try again.');
+            }
+        });
+    })();
+
+    return turnstileReadyPromise;
+}
+
+function resetTurnstile(clearMessage = true) {
+    turnstileToken = '';
+
+    if (window.turnstile?.reset && turnstileWidgetId !== null) {
+        try {
+            window.turnstile.reset(turnstileWidgetId);
+        } catch (error) {
+            console.error('Could not reset Turnstile widget:', error);
+        }
+    }
+
+    if (clearMessage) {
+        setTurnstileMessage('');
+    }
+}
+
+async function verifyTurnstileBeforeAuth(messageElement = getAuthMessageElement()) {
+    if (!requiresTurnstile) {
+        return true;
+    }
+
+    try {
+        await ensureTurnstileReady();
+    } catch (error) {
+        const message = error.message || 'Human verification is not available. Please try again later.';
+        setTurnstileMessage(message);
+        setMessage(messageElement, message);
+        return false;
+    }
+
+    if (!turnstileToken) {
+        const message = 'Please verify that you are human.';
+        setTurnstileMessage(message);
+        setMessage(messageElement, message);
+        return false;
+    }
+
+    try {
+        const verificationResponse = await fetch(TURNSTILE_VERIFY_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                token: turnstileToken
+            })
+        });
+        const verificationPayload = await verificationResponse.json().catch(() => ({}));
+
+        resetTurnstile();
+
+        if (!verificationResponse.ok || !verificationPayload.ok) {
+            throw new Error(verificationPayload.error || 'Human verification failed. Please try again.');
+        }
+
+        return true;
+    } catch (error) {
+        resetTurnstile(false);
+        const message = error.message || 'Human verification failed. Please try again.';
+        setTurnstileMessage(message);
+        setMessage(messageElement, message);
+        return false;
+    }
+}
+
+async function runWithButtonLock(button, busyLabel, callback) {
+    if (!button) {
+        return callback();
+    }
+
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = busyLabel;
+
+    try {
+        return await callback();
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+    }
 }
 
 function getResolvedUserName(user, userData = null) {
@@ -110,101 +289,10 @@ function setupPasswordToggle(buttonId, inputId) {
     });
 }
 
-function showPhoneLogin(showPhone) {
-    setHidden(phoneAuthSection, !showPhone);
-    setHidden(emailAuthSection, showPhone);
-    setHidden(forgotPasswordSection, true);
-
-    if (phoneLoginBtn) {
-        phoneLoginBtn.innerHTML = showPhone
-            ? '<i class="fas fa-envelope"></i> Login with Email'
-            : '<i class="fas fa-phone"></i> Login with Phone';
-    }
-
-    if (showPhone && !window.recaptchaVerifier && recaptchaContainer) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'normal'
-        });
-        window.recaptchaVerifier.render();
-    }
-}
-
-if (phoneLoginBtn) {
-    phoneLoginBtn.addEventListener('click', () => {
-        showPhone(phoneAuthSection ? phoneAuthSection.hidden : true);
-    });
-}
-
-if (sendCodeBtn) {
-    sendCodeBtn.addEventListener('click', async () => {
-        const phoneNumber = document.getElementById('phone-number').value;
-        const appVerifier = window.recaptchaVerifier;
-
-        try {
-            window.confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-            setHidden(document.getElementById('otp-group'), false);
-            setHidden(phoneGroup, true);
-            alert('Code sent!');
-        } catch (error) {
-            console.error('Error sending code:', error);
-            alert('Error sending SMS: ' + error.message);
-        }
-    });
-}
-
-if (verifyCodeBtn) {
-    verifyCodeBtn.addEventListener('click', async () => {
-        const code = document.getElementById('otp-code').value;
-
-        try {
-            const result = await window.confirmationResult.confirm(code);
-            const user = result.user;
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (!userDoc.exists()) {
-                await setDoc(userDocRef, {
-                    name: 'Phone User',
-                    email: '',
-                    role: 'user',
-                    createdAt: serverTimestamp()
-                });
-            }
-
-            const role = userDoc.exists() ? userDoc.data().role : 'user';
-            window.location.href = getDashboardPath(role);
-        } catch (error) {
-            console.error('OTP verification failed:', error);
-            alert('Incorrect code');
-        }
-    });
-}
-
-if (googleBtn) {
-    googleBtn.addEventListener('click', async () => {
-        const provider = new GoogleAuthProvider();
-
-        try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (!userDoc.exists()) {
-                await setDoc(userDocRef, {
-                    name: user.displayName,
-                    email: user.email,
-                    role: 'user',
-                    createdAt: serverTimestamp()
-                });
-            }
-
-            const role = userDoc.exists() ? userDoc.data().role : 'user';
-            window.location.href = getDashboardPath(role);
-        } catch (error) {
-            console.error('Google Sign-In Error:', error);
-            alert('Google Sign-In failed: ' + error.message);
-        }
+if (requiresTurnstile) {
+    ensureTurnstileReady().catch((error) => {
+        const message = error.message || 'Human verification is not available. Please try again later.';
+        setTurnstileMessage(message);
     });
 }
 
@@ -212,9 +300,11 @@ if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener('click', (event) => {
         event.preventDefault();
         setHidden(emailAuthSection, true);
-        setHidden(phoneAuthSection, true);
         setHidden(forgotPasswordSection, false);
+        setHidden(turnstileGate, true);
+        setHidden(emailLoginSubmit, true);
         setMessage(resetMessage, '');
+        setTurnstileMessage('');
 
         const authHeaderCopy = document.querySelector('.auth-header p');
         if (authHeaderCopy) {
@@ -227,19 +317,16 @@ if (backToLoginBtn) {
     backToLoginBtn.addEventListener('click', () => {
         setHidden(forgotPasswordSection, true);
         setHidden(emailAuthSection, false);
-        setHidden(phoneAuthSection, true);
-        setHidden(phoneGroup, false);
-        setHidden(document.getElementById('otp-group'), true);
+        setHidden(turnstileGate, false);
+        setHidden(emailLoginSubmit, false);
         setMessage(resetMessage, '');
+        setTurnstileMessage('');
 
         const authHeaderCopy = document.querySelector('.auth-header p');
         if (authHeaderCopy) {
             authHeaderCopy.textContent = 'Login to your account';
         }
 
-        if (phoneLoginBtn) {
-            phoneLoginBtn.innerHTML = '<i class="fas fa-phone"></i> Login with Phone';
-        }
     });
 }
 
@@ -384,47 +471,55 @@ if (registerForm) {
             return;
         }
 
-        try {
-            const credential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = credential.user;
-
-            await updateProfile(user, { displayName: name });
-            await setDoc(doc(db, 'users', user.uid), {
-                name,
-                email,
-                phone,
-                role: 'user',
-                address,
-                city,
-                zip,
-                createdAt: new Date()
-            }, { merge: true });
-            await sendEmailVerification(user, actionCodeSettings);
-
-            registerForm.hidden = true;
-            const authHeaderCopy = document.querySelector('.auth-header p');
-            if (authHeaderCopy) {
-                authHeaderCopy.textContent = 'Verification Required';
+        const submitButton = event.submitter || registerForm.querySelector('button[type="submit"]');
+        await runWithButtonLock(submitButton, 'Creating Account...', async () => {
+            if (!(await verifyTurnstileBeforeAuth(registerError))) {
+                return;
             }
 
-            const successCard = document.createElement('div');
-            successCard.className = 'auth-success';
-            successCard.innerHTML = `
-                <i class="fas fa-envelope-open-text auth-success__icon"></i>
-                <h3 class="auth-success__title">Check your email!</h3>
-                <p class="auth-success__copy">We've sent a verification link to <strong>${email}</strong>. Please click the link to activate your account before logging in.</p>
-                <a href="/login" class="btn btn-primary w-full">Go to Login</a>
-            `;
-            registerForm.parentNode.insertBefore(successCard, registerForm.nextSibling);
-        } catch (error) {
-            if (error.code === 'auth/email-already-in-use') {
-                setMessage(registerError, 'This email is already registered.');
-            } else if (error.code === 'auth/operation-not-allowed') {
-                setMessage(registerError, 'Email/Password sign-up is disabled in Firebase Console. Please enable it in authentication methods.');
-            } else {
-                setMessage(registerError, 'Error: ' + error.message);
+            try {
+                const credential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = credential.user;
+
+                await updateProfile(user, { displayName: name });
+                await setDoc(doc(db, 'users', user.uid), {
+                    name,
+                    email,
+                    phone,
+                    role: 'user',
+                    address,
+                    city,
+                    zip,
+                    createdAt: new Date()
+                }, { merge: true });
+                await sendEmailVerification(user, actionCodeSettings);
+
+                registerForm.hidden = true;
+                setHidden(turnstileGate, true);
+                const authHeaderCopy = document.querySelector('.auth-header p');
+                if (authHeaderCopy) {
+                    authHeaderCopy.textContent = 'Verification Required';
+                }
+
+                const successCard = document.createElement('div');
+                successCard.className = 'auth-success';
+                successCard.innerHTML = `
+                    <i class="fas fa-envelope-open-text auth-success__icon"></i>
+                    <h3 class="auth-success__title">Check your email!</h3>
+                    <p class="auth-success__copy">We've sent a verification link to <strong>${email}</strong>. Please click the link to activate your account before logging in.</p>
+                    <a href="/login" class="btn btn-primary w-full">Go to Login</a>
+                `;
+                registerForm.parentNode.insertBefore(successCard, registerForm.nextSibling);
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    setMessage(registerError, 'This email is already registered.');
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    setMessage(registerError, 'Email/Password sign-up is disabled in Firebase Console. Please enable it in authentication methods.');
+                } else {
+                    setMessage(registerError, 'Error: ' + error.message);
+                }
             }
-        }
+        });
     });
 }
 
@@ -434,63 +529,73 @@ if (loginForm) {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const loginError = document.getElementById('login-error');
+        const submitButton = event.submitter || emailLoginSubmit || loginForm.querySelector('button[type="submit"]');
 
         setMessage(loginError, '');
 
-        try {
-            const credential = await signInWithEmailAndPassword(auth, email, password);
-            const user = credential.user;
-
-            if (!user.emailVerified) {
-                await signOut(auth);
-                loginError.hidden = false;
-                loginError.classList.remove('form-message--success');
-                loginError.classList.add('form-message--error');
-                loginError.innerHTML = `
-                    Please verify your email address before logging in.<br>
-                    <button id="resend-verification" class="inline-link-button" type="button">Resend Verification Link</button>
-                `;
-
-                const resendButton = document.getElementById('resend-verification');
-                if (resendButton) {
-                    resendButton.addEventListener('click', async () => {
-                        resendButton.disabled = true;
-                        resendButton.textContent = 'Sending...';
-
-                        try {
-                            const tempCredential = await signInWithEmailAndPassword(auth, email, password);
-                            await sendEmailVerification(tempCredential.user, actionCodeSettings);
-                            await signOut(auth);
-                            setMessage(loginError, 'Verification link resent successfully. Check your inbox.', 'success');
-                        } catch (error) {
-                            setMessage(loginError, 'Error resending link: ' + error.message);
-                        }
-                    });
-                }
-
+        await runWithButtonLock(submitButton, 'Logging in...', async () => {
+            if (!(await verifyTurnstileBeforeAuth(loginError))) {
                 return;
             }
 
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
-            if (userDoc.exists()) {
-                const role = userDoc.data().role;
-                window.location.href = getDashboardPath(role);
-            } else {
-                window.location.href = getDashboardPath();
-            }
-        } catch (error) {
-            console.error(error);
+            try {
+                const credential = await signInWithEmailAndPassword(auth, email, password);
+                const user = credential.user;
 
-            if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                setMessage(loginError, 'Incorrect email or password. Please try again.');
-            } else if (error.code === 'auth/too-many-requests') {
-                setMessage(loginError, 'Too many failed attempts. Please try again later or reset your password.');
-            } else if (error.code === 'auth/user-disabled') {
-                setMessage(loginError, 'This account has been disabled. Please contact support.');
-            } else {
-                setMessage(loginError, 'Login failed: ' + error.message);
+                if (!user.emailVerified) {
+                    await signOut(auth);
+                    loginError.hidden = false;
+                    loginError.classList.remove('form-message--success');
+                    loginError.classList.add('form-message--error');
+                    loginError.innerHTML = `
+                        Please verify your email address before logging in.<br>
+                        <button id="resend-verification" class="inline-link-button" type="button">Resend Verification Link</button>
+                    `;
+
+                    const resendButton = document.getElementById('resend-verification');
+                    if (resendButton) {
+                        resendButton.addEventListener('click', async () => {
+                            await runWithButtonLock(resendButton, 'Sending...', async () => {
+                                if (!(await verifyTurnstileBeforeAuth(null))) {
+                                    return;
+                                }
+
+                                try {
+                                    const tempCredential = await signInWithEmailAndPassword(auth, email, password);
+                                    await sendEmailVerification(tempCredential.user, actionCodeSettings);
+                                    await signOut(auth);
+                                    setMessage(loginError, 'Verification link resent successfully. Check your inbox.', 'success');
+                                } catch (error) {
+                                    setMessage(loginError, 'Error resending link: ' + error.message);
+                                }
+                            });
+                        });
+                    }
+
+                    return;
+                }
+
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    const role = userDoc.data().role;
+                    window.location.href = getDashboardPath(role);
+                } else {
+                    window.location.href = getDashboardPath();
+                }
+            } catch (error) {
+                console.error(error);
+
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    setMessage(loginError, 'Incorrect email or password. Please try again.');
+                } else if (error.code === 'auth/too-many-requests') {
+                    setMessage(loginError, 'Too many failed attempts. Please try again later or reset your password.');
+                } else if (error.code === 'auth/user-disabled') {
+                    setMessage(loginError, 'This account has been disabled. Please contact support.');
+                } else {
+                    setMessage(loginError, 'Login failed: ' + error.message);
+                }
             }
-        }
+        });
     });
 }
 
