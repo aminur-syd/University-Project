@@ -32,8 +32,8 @@ const commentForm = document.getElementById('comment-form');
 const commentTextarea = document.getElementById('comment-text');
 const commentFormMessage = document.getElementById('comment-form-message');
 
-const FALLBACK_CARD_IMAGE = 'https://via.placeholder.com/300x200?text=No+Image';
-const FALLBACK_DETAIL_IMAGE = 'https://via.placeholder.com/600x400?text=No+Image';
+const FALLBACK_CARD_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200' viewBox='0 0 300 200'%3E%3Crect width='100%25' height='100%25' fill='%23f1f5f9'/%3E%3Cpath d='M110 120l25-30 20 24 15-18 20 24H110z' fill='%23cbd5e1'/%3E%3Ccircle cx='130' cy='75' r='10' fill='%23cbd5e1'/%3E%3Ctext x='50%25' y='155' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='13' font-weight='500' fill='%2364748b'%3ENo Image Available%3C/text%3E%3C/svg%3E";
+const FALLBACK_DETAIL_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='100%25' height='100%25' fill='%23f1f5f9'/%3E%3Cpath d='M220 250l50-60 40 48 30-36 40 48H220z' fill='%23cbd5e1'/%3E%3Ccircle cx='260' cy='155' r='20' fill='%23cbd5e1'/%3E%3Ctext x='50%25' y='310' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='500' fill='%2364748b'%3ENo Image Available%3C/text%3E%3C/svg%3E";
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const FIREBASE_OPERATION_TIMEOUT_MS = 15000;
 const ITEM_IMAGE_API_BASE = '/api/item-images';
@@ -446,7 +446,7 @@ async function renderItems(items, container) {
 
         card.innerHTML = `
             <div class="item-media">
-                <img class="item-image" src="${escapeHtml(imageUrl)}" alt="${itemTitle}">
+                <img class="item-image" src="${escapeHtml(imageUrl)}" alt="${itemTitle}" onerror="this.onerror=null;this.src='${FALLBACK_CARD_IMAGE}'">
                 <span class="item-badge ${badgeClass}">${escapeHtml(item.type || 'item')}</span>
             </div>
             <div class="item-content">
@@ -613,7 +613,7 @@ function renderItemDetail(item) {
     itemDetailContainer.innerHTML = `
         <div class="item-detail-layout">
             <div class="item-detail-media">
-                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title || 'Item image')}" class="item-detail-image">
+                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.title || 'Item image')}" class="item-detail-image" onerror="this.onerror=null;this.src='${FALLBACK_DETAIL_IMAGE}'">
             </div>
             <div class="item-detail-summary">
                 <span class="item-badge item-detail-badge ${badgeClass}">${escapeHtml((item.type || 'item').toUpperCase())}</span>
