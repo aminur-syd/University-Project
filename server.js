@@ -930,10 +930,14 @@ app.use((error, _request, response, _next) => {
     response.status(500).json({ error: 'Unexpected server error.' });
 });
 
-app.listen(PORT, () => {
-    console.log(`Lost & Found server running at http://localhost:${PORT}`);
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Lost & Found server running at http://localhost:${PORT}`);
 
-    if (!supabase) {
-        console.warn('SUPABASE_SERVICE_ROLE_KEY is not configured. Chat attachment uploads will fail until it is set.');
-    }
-});
+        if (!supabase) {
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is not configured. Chat attachment uploads will fail until it is set.');
+        }
+    });
+}
+
+module.exports = app;
