@@ -233,27 +233,47 @@ function getClientIp(request) {
     }
 
     const forwardedFor = String(request.headers['x-forwarded-for'] || '').split(',')[0].trim();
-    return forwardedFor || request.socket?.remoteAddress || '';
+    return forwardedFor || request.headers['x-real-ip'] || request.socket?.remoteAddress || '';
+}
+
+function isPublicIp(ip) {
+    if (!ip || typeof ip !== 'string') return false;
+    const clean = ip.trim();
+    if (clean === '::1' || clean === '127.0.0.1' || clean === 'localhost' || clean.startsWith('::ffff:127.')) {
+        return false;
+    }
+    if (/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(clean)) {
+        return false;
+    }
+    if (clean.startsWith('fe80:') || clean.startsWith('fc00:') || clean.startsWith('fd00:')) {
+        return false;
+    }
+    return true;
 }
 
 async function verifyTurnstileToken(token, remoteIp) {
     if (!CLOUDFLARE_TURNSTILE_SECRET_KEY) {
-        const configError = new Error('Human verification is not configured.');
+        const configError = new Error('Human verification is not configured on the server.');
         configError.status = 503;
         throw configError;
     }
 
-    const formData = new URLSearchParams({
+    const payloadBody = {
         secret: CLOUDFLARE_TURNSTILE_SECRET_KEY,
         response: token
-    });
+    };
 
-    if (remoteIp) {
-        formData.set('remoteip', remoteIp);
+    if (remoteIp && isPublicIp(remoteIp)) {
+        payloadBody.remoteip = remoteIp;
     }
+
+    const formData = new URLSearchParams(payloadBody);
 
     const turnstileResponse = await fetch(CLOUDFLARE_TURNSTILE_VERIFY_URL, {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
         body: formData
     });
 
@@ -268,7 +288,7 @@ async function verifyTurnstileToken(token, remoteIp) {
     }
 
     if (!turnstileResponse.ok) {
-        const upstreamError = new Error('Could not validate human verification.');
+        const upstreamError = new Error('Cloudflare human verification service returned an error.');
         upstreamError.status = 502;
         upstreamError.details = payload;
         throw upstreamError;
@@ -624,23 +644,36 @@ app.post('/api/turnstile/verify', async (request, response) => {
     }
 
     try {
-        const payload = await verifyTurnstileToken(token, getClientIp(request));
+        const clientIp = getClientIp(request);
+        const payload = await verifyTurnstileToken(token, clientIp);
 
         if (!payload?.success) {
-            console.warn('Cloudflare Turnstile validation failed:', payload?.['error-codes'] || []);
+            const errorCodes = payload?.['error-codes'] || [];
+            console.warn('Cloudflare Turnstile validation failed:', errorCodes);
+
+            let message = 'Human verification failed. Please try again.';
+            if (errorCodes.includes('timeout-or-duplicate')) {
+                message = 'Human verification expired or was already used. Please verify again.';
+            } else if (errorCodes.includes('invalid-input-secret')) {
+                message = 'Cloudflare secret key is invalid. Please verify server environment variables.';
+            } else if (errorCodes.includes('invalid-input-response')) {
+                message = 'Human verification token is invalid or expired. Please try again.';
+            }
+
             response.status(403).json({
-                error: 'Human verification failed. Please try again.'
+                error: message,
+                errorCodes
             });
             return;
         }
 
         response.json({ ok: true });
     } catch (error) {
-        console.error('Cloudflare Turnstile validation error:', error.details || error);
+        console.error('Cloudflare Turnstile validation error:', error.details || error.message || error);
         response.status(error.status || 500).json({
             error: error.status === 503
                 ? 'Human verification is not configured.'
-                : 'Could not validate human verification. Please try again.'
+                : (error.message || 'Could not validate human verification. Please try again.')
         });
     }
 });

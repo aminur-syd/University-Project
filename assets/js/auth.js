@@ -147,6 +147,10 @@ async function ensureTurnstileReady() {
             callback(token) {
                 turnstileToken = token;
                 setTurnstileMessage('');
+                const authMessageElement = getAuthMessageElement();
+                if (authMessageElement && authMessageElement.textContent.toLowerCase().includes('human verification')) {
+                    setMessage(authMessageElement, '');
+                }
             },
             'expired-callback'() {
                 turnstileToken = '';
@@ -216,12 +220,12 @@ async function verifyTurnstileBeforeAuth(messageElement = getAuthMessageElement(
         });
         const verificationPayload = await verificationResponse.json().catch(() => ({}));
 
-        resetTurnstile();
-
         if (!verificationResponse.ok || !verificationPayload.ok) {
+            resetTurnstile(false);
             throw new Error(verificationPayload.error || 'Human verification failed. Please try again.');
         }
 
+        resetTurnstile(true);
         return true;
     } catch (error) {
         resetTurnstile(false);
