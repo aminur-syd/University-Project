@@ -417,7 +417,7 @@ body.is-exporting .cover-paper {
     overflow-wrap: anywhere;
 }
 
-.cover-line + .cover-line {
+.cover-line+.cover-line {
     margin-top: 6px;
 }
 
